@@ -1,5 +1,5 @@
 {
-  "originHash" : "e805a0083f11b367299be0271a4145f9bf45e8082ce8569f5321bb4caa759816",
+  "originHash" : "22dfa66cef2bb079e1b0ffcd6484865b097bea76adfaf220460fbfc877d1baab",
   "pins" : [
     {
       "identity" : "axswift",
@@ -38,21 +38,21 @@
       }
     },
     {
-      "identity" : "llmkit",
+      "identity" : "localvoice-llmkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Beingpax/LLMkit.git",
+      "location" : "https://github.com/fanelsi-pets/localvoice-llmkit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "bbfbf5c4cf903d660010ad23f80fbfb7f76ba416"
+        "revision" : "733b0accd1fa5a02ab327cb81b440524bdb92745"
       }
     },
     {
-      "identity" : "mediaremote-adapter",
+      "identity" : "localvoice-selectedtextkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Beingpax/mediaremote-adapter",
+      "location" : "https://github.com/fanelsi-pets/localvoice-selectedtextkit.git",
       "state" : {
-        "branch" : "master",
-        "revision" : "b97fa53f0654c8e33519e8a601b0bead3abd310a"
+        "branch" : "main",
+        "revision" : "6dd60c6d5c405fcaf929450ae08ebe01574d1fc1"
       }
     },
     {
@@ -62,15 +62,6 @@
       "state" : {
         "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
         "version" : "6.0.1"
-      }
-    },
-    {
-      "identity" : "selectedtextkit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Beingpax/SelectedTextKit.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "9c51732dd6b6c1dad161762ec3bb8bb73bc82833"
       }
     },
     {

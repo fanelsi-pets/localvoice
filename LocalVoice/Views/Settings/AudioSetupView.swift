@@ -4,7 +4,6 @@ import SwiftUI
 struct AudioSetupView: View {
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var mediaController = MediaController.shared
-    @ObservedObject private var playbackController = PlaybackController.shared
     @State private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection = .systemDefault
     @State private var refreshIconRotation = 0.0
 
@@ -32,8 +31,6 @@ struct AudioSetupView: View {
 
             Section {
                 Toggle("Mute Audio While Recording", isOn: $mediaController.isSystemMuteEnabled)
-
-                Toggle("Pause Media While Recording", isOn: $playbackController.isPauseMediaEnabled)
 
                 LabeledContent("Resume Delay") {
                     resumeDelayMenu
@@ -292,7 +289,7 @@ struct AudioSetupView: View {
     }
 
     private var canEditResumeDelay: Bool {
-        mediaController.isSystemMuteEnabled || playbackController.isPauseMediaEnabled
+        mediaController.isSystemMuteEnabled
     }
 
     private func movePrioritizedDeviceUp(_ device: PrioritizedDevice) {
