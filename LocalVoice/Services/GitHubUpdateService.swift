@@ -1,5 +1,4 @@
 import AppKit
-import CryptoKit
 import Foundation
 
 @MainActor
@@ -91,55 +90,13 @@ final class GitHubUpdateService: ObservableObject {
 
     func installAvailableUpdate() async {
         guard let release = availableRelease else { return }
-        guard let dmg = release.dmgAsset, let checksum = release.checksumAsset else {
+        guard let dmg = release.dmgAsset else {
             NSWorkspace.shared.open(release.htmlURL)
             return
         }
-        guard !isDownloading else { return }
-
-        isDownloading = true
-        errorMessage = nil
-        defer { isDownloading = false }
-
-        do {
-            async let dmgDownload = URLSession.shared.download(from: dmg.downloadURL)
-            async let checksumData = URLSession.shared.data(from: checksum.downloadURL)
-            let ((temporaryURL, response), (checksumBytes, checksumResponse)) = try await (dmgDownload, checksumData)
-            try Self.requireSuccessful(response)
-            try Self.requireSuccessful(checksumResponse)
-
-            let expected = String(decoding: checksumBytes, as: UTF8.self)
-                .split(whereSeparator: { $0.isWhitespace })
-                .first
-                .map(String.init)?
-                .lowercased()
-            let actual = try Self.sha256(of: temporaryURL)
-            guard expected == actual else { throw UpdateError.checksumMismatch }
-
-            let updateDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("LocalVoiceUpdates", isDirectory: true)
-            try FileManager.default.createDirectory(at: updateDirectory, withIntermediateDirectories: true)
-            let destination = updateDirectory.appendingPathComponent(dmg.name)
-            if FileManager.default.fileExists(atPath: destination.path) {
-                try FileManager.default.removeItem(at: destination)
-            }
-            try FileManager.default.moveItem(at: temporaryURL, to: destination)
-            NSWorkspace.shared.open(destination)
-        } catch {
-            errorMessage = error.localizedDescription
+        if !NSWorkspace.shared.open(dmg.downloadURL) {
             NSWorkspace.shared.open(release.htmlURL)
         }
-    }
-
-    private static func requireSuccessful(_ response: URLResponse) throws {
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-    }
-
-    private static func sha256(of url: URL) throws -> String {
-        let data = try Data(contentsOf: url, options: .mappedIfSafe)
-        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private static func isNewer(_ candidate: String, than installed: String) -> Bool {
@@ -159,13 +116,5 @@ final class GitHubUpdateService: ObservableObject {
             .map { component in
                 Int(component.prefix(while: { $0.isNumber })) ?? 0
             }
-    }
-
-    private enum UpdateError: LocalizedError {
-        case checksumMismatch
-
-        var errorDescription: String? {
-            String(localized: "The update could not be verified.")
-        }
     }
 }
