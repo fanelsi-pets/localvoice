@@ -32,6 +32,8 @@ playground.xcworkspace
 .build/
 build/
 .local-build/
+.release-build*/
+.tools/
 .xcode-debug/
 .build-tools/
 dist/

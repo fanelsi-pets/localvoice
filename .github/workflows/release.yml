@@ -1,0 +1,62 @@
+name: Release DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build whisper framework
+        run: |
+          mkdir -p "$HOME/LocalVoice-Dependencies"
+          git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git "$HOME/LocalVoice-Dependencies/whisper.cpp"
+          cd "$HOME/LocalVoice-Dependencies/whisper.cpp"
+          ./build-xcframework.sh
+
+      - name: Build LocalVoice
+        run: |
+          xcodebuild \
+            -project LocalVoice.xcodeproj \
+            -scheme LocalVoice \
+            -configuration Release \
+            -derivedDataPath .release-build \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
+            CODE_SIGNING_ALLOWED=YES \
+            build
+
+      - name: Sign application
+        run: |
+          codesign --force --sign - \
+            .release-build/Build/Products/Release/LocalVoice.app/Contents/Frameworks/whisper.framework
+          codesign --force --sign - \
+            --entitlements LocalVoice/LocalVoice.local.entitlements \
+            .release-build/Build/Products/Release/LocalVoice.app
+          codesign --verify --deep --strict .release-build/Build/Products/Release/LocalVoice.app
+
+      - name: Create DMG and checksum
+        run: |
+          chmod +x scripts/create-dmg.sh
+          scripts/create-dmg.sh \
+            .release-build/Build/Products/Release/LocalVoice.app \
+            "LocalVoice-${GITHUB_REF_NAME}.dmg"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --generate-notes --title "LocalVoice $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" \
+            "LocalVoice-${GITHUB_REF_NAME}.dmg" \
+            "LocalVoice-${GITHUB_REF_NAME}.dmg.sha256" \
+            --clobber

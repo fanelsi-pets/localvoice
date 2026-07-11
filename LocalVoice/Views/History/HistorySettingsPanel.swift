@@ -24,17 +24,14 @@ struct HistorySettingsPanel: View {
 
             Form {
                 Section {
-                    Toggle("Auto-delete Transcript History", isOn: $isTranscriptionCleanupEnabled)
+                    Picker("Keep Transcriptions", selection: transcriptionRetentionBinding) {
+                        Text("1 day").tag(24 * 60)
+                        Text("7 days").tag(7 * 24 * 60)
+                        Text("1 month").tag(30 * 24 * 60)
+                        Text("Always").tag(-1)
+                    }
 
                     if isTranscriptionCleanupEnabled {
-                        Picker("Delete After", selection: $transcriptionRetentionMinutes) {
-                            Text("Immediately").tag(0)
-                            Text("1 hour").tag(60)
-                            Text("1 day").tag(24 * 60)
-                            Text("3 days").tag(3 * 24 * 60)
-                            Text("7 days").tag(7 * 24 * 60)
-                        }
-
                         Button("Run Cleanup Now") {
                             Task {
                                 await TranscriptionAutoCleanupService.shared.runManualCleanup(
@@ -143,6 +140,20 @@ struct HistorySettingsPanel: View {
                 AudioCleanupManager.shared.stopAutomaticCleanup()
             }
         }
+    }
+
+    private var transcriptionRetentionBinding: Binding<Int> {
+        Binding(
+            get: { isTranscriptionCleanupEnabled ? transcriptionRetentionMinutes : -1 },
+            set: { value in
+                if value < 0 {
+                    isTranscriptionCleanupEnabled = false
+                } else {
+                    transcriptionRetentionMinutes = value
+                    isTranscriptionCleanupEnabled = true
+                }
+            }
+        )
     }
 
     private func sectionHeader(_ title: LocalizedStringKey, tip: LocalizedStringKey) -> some View {

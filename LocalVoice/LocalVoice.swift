@@ -128,17 +128,20 @@ struct LocalVoiceApp: App {
         // 6. Initialize model state
         // Migration and refreshAllAvailableModels must run before loadCurrentTranscriptionModel so renamed keys are remapped and imported models are present when restoring the saved selection.
         StreamingKeysMigration.run()
+        GeminiModelMigration.run()
+        GeminiFlash35Migration.run()
         whisperModelManager.createModelsDirectoryIfNeeded()
-        whisperModelManager.installBundledModelsIfNeeded()
         whisperModelManager.loadAvailableModels()
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
+        OnlineFirstModelMigration.run(using: transcriptionModelManager)
         let restoredModelIsUsable = transcriptionModelManager.currentTranscriptionModel.map { restored in
             transcriptionModelManager.usableModels.contains(where: { $0.name == restored.name })
         } ?? false
         if !restoredModelIsUsable,
-            let bundledDefault = transcriptionModelManager.usableModels.first(where: { $0.name == "ggml-base" })
-                ?? transcriptionModelManager.usableModels.first
+            let bundledDefault = transcriptionModelManager.usableModels.first(where: {
+                $0.provider == .gemini || $0.provider == .openAI
+            }) ?? transcriptionModelManager.usableModels.first
         {
             transcriptionModelManager.setDefaultTranscriptionModel(bundledDefault)
         }

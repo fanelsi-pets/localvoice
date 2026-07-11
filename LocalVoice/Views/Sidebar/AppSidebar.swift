@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppSidebar: View {
     @Binding var selectedView: ViewType
+    @StateObject private var updateService = GitHubUpdateService.shared
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -23,10 +24,51 @@ struct AppSidebar: View {
 
             Spacer(minLength: 16)
 
+            if let release = updateService.availableRelease {
+                updateButton(for: release)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 6)
+            }
+
             sidebarSection(ViewType.secondaryItems)
                 .padding(.bottom, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func updateButton(for release: GitHubUpdateService.Release) -> some View {
+        Button {
+            Task { await updateService.installAvailableUpdate() }
+        } label: {
+            HStack(spacing: 9) {
+                if updateService.isDownloading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 24, height: 24)
+                } else {
+                    SidebarIconTile(
+                        systemName: "arrow.down.circle.fill",
+                        style: .init(background: .accentColor)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(updateService.isDownloading ? "Downloading…" : "Update")
+                        .font(.system(size: 13.5, weight: .semibold))
+                    Text(release.tagName)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 42)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .disabled(updateService.isDownloading)
+        .help("Download and install the latest version")
     }
 
     private var sidebarBackground: some View {
