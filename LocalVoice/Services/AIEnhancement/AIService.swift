@@ -19,7 +19,7 @@ enum AIProvider: String, CaseIterable {
     case custom = "Custom"
 
     // Only explicitly supported opt-in cloud providers are exposed.
-    static var allCases: [AIProvider] { [.gemini, .openAI, .anthropic] }
+    static var allCases: [AIProvider] { [.gemini, .openAI] }
 
     var baseURL: String {
         switch self {
@@ -63,9 +63,9 @@ enum AIProvider: String, CaseIterable {
         case .groq:
             return "openai/gpt-oss-120b"
         case .gemini:
-            return "gemini-3.5-flash"
+            return "gemini-2.5-flash-lite"
         case .anthropic:
-            return "claude-sonnet-5"
+            return "claude-sonnet-4-6"
         case .openAI:
             return "gpt-4o-mini"
         case .mistral:
@@ -106,14 +106,14 @@ enum AIProvider: String, CaseIterable {
             ]
         case .gemini:
             return [
-                "gemini-3.5-flash",
-                "gemini-3.1-flash-lite",
+                "gemini-2.5-flash-lite",
+                "gemini-2.5-flash",
             ]
         case .anthropic:
             return [
-                "claude-sonnet-5",
-                "claude-opus-4-8",
                 "claude-haiku-4-5",
+                "claude-sonnet-5",
+                "claude-sonnet-4-6",
             ]
         case .openAI:
             return [

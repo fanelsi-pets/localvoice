@@ -107,17 +107,15 @@ struct OnboardingTranscriptionSetupCard: View {
 
     @ViewBuilder
     private var localSetup: some View {
-        if let localModel {
-            TranscriptionModelDownloadCard(
-                model: localModel,
-                isDownloaded: isLocalDownloaded,
-                isDownloading: isLocalDownloading,
-                status: localDownloadStatus,
-                onDownload: { onDownloadLocalModel(localModel) }
-            )
-        } else {
-            missingModelPanel
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Offline model", systemImage: "internaldrive.fill")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Local Voice never downloads models. After setup, open AI Models and import a compatible Whisper model from this Mac.")
+                .font(.system(size: 12))
+                .foregroundColor(AppTheme.Text.secondary)
         }
+        .padding(16)
+        .background(AppMaterialCardBackground(cornerRadius: 12))
     }
 
     private var missingModelPanel: some View {

@@ -123,7 +123,7 @@ final class OnboardingFlowController {
                 enhancementService: enhancementService
             )
         } else {
-            coordinator.storedStage = OnboardingStage.model.rawValue
+            coordinator.storedStage = OnboardingStage.api.rawValue
         }
     }
 
@@ -150,7 +150,7 @@ final class OnboardingFlowController {
         enhancementService: AIEnhancementService
     ) {
         guard coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) else {
-            coordinator.storedStage = OnboardingStage.model.rawValue
+            coordinator.storedStage = OnboardingStage.api.rawValue
             return
         }
 
@@ -204,21 +204,6 @@ final class OnboardingFlowController {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
         }
 
-        // The enhancement API screen is no longer part of onboarding. A key
-        // entered for cloud transcription must not also opt the user into LLM
-        // enhancement without an explicit choice in Settings.
-        if coordinator.stage == .api
-            && coordinator.requiredPermissionsGranted
-            && coordinator.hasSelectedOnboardingMicrophone
-            && isTranscriptionSetupReady
-        {
-            skipAPISetupAndContinue(
-                isTranscriptionSetupReady: isTranscriptionSetupReady,
-                enhancementService: enhancementService
-            )
-            return
-        }
-
         if (coordinator.stage == .experience || coordinator.stage == .contextAwareness || coordinator.stage == .trust)
             && !coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady)
         {
@@ -247,9 +232,7 @@ final class OnboardingFlowController {
         } else if !isTranscriptionSetupReady {
             coordinator.storedStage = OnboardingStage.model.rawValue
         } else {
-            coordinator.hasSkippedAPISetup = true
-            coordinator.isSelectedAPIProviderVerified = false
-            coordinator.storedStage = OnboardingStage.experience.rawValue
+            coordinator.storedStage = OnboardingStage.api.rawValue
         }
     }
 

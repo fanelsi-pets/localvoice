@@ -49,7 +49,6 @@ struct ContentView: View {
         .frame(minHeight: AppWindowLayout.minimumHeight)
         .onAppear {
             logger.notice("ContentView appeared")
-            Task { await GitHubUpdateService.shared.checkForUpdates() }
         }
         .onDisappear {
             logger.notice("ContentView disappeared")
@@ -59,9 +58,6 @@ struct ContentView: View {
                 logger.notice("navigateToDestination received: \(destination, privacy: .public)")
                 navigation.navigate(to: destination)
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await GitHubUpdateService.shared.checkForUpdates() }
         }
     }
 
