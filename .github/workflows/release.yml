@@ -54,8 +54,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --generate-notes --title "LocalVoice $GITHUB_REF_NAME"
+          gh release upload "$GITHUB_REF_NAME" \
             "LocalVoice-${GITHUB_REF_NAME}.dmg" \
             "LocalVoice-${GITHUB_REF_NAME}.dmg.sha256" \
-            --generate-notes \
-            --title "LocalVoice $GITHUB_REF_NAME"
+            --clobber
