@@ -1,0 +1,39 @@
+import Foundation
+import SwiftData
+
+protocol CloudProvider: Sendable {
+    var modelProvider: ModelProvider { get }
+    var providerKey: String { get }
+    var languageCodes: [String]? { get }
+    var includesAutoDetect: Bool { get }
+    var models: [CloudModel] { get }
+    /// True when the provider has no batch HTTP endpoint and requires streaming for all transcription.
+    var isStreamingOnly: Bool { get }
+
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String
+    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)?
+    func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?)
+}
+
+extension CloudProvider {
+    var isStreamingOnly: Bool { false }
+
+    /// Streaming-only providers inherit this and get a clear error if batch is somehow attempted.
+    /// Providers that support batch transcription override this with their real implementation.
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
+        throw CloudTranscriptionError.unsupportedProvider
+    }
+}
+
+enum CloudProviderRegistry {
+    // Remote providers are opt-in and only become usable after their key is saved.
+    static let allProviders: [any CloudProvider] = [GeminiProvider(), OpenAIProvider()]
+
+    static func provider(for modelProvider: ModelProvider) -> (any CloudProvider)? {
+        allProviders.first { $0.modelProvider == modelProvider }
+    }
+}

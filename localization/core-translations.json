@@ -1,0 +1,22 @@
+{
+  "uk": {
+    "Settings": "Налаштування", "Dashboard": "Огляд", "Modes": "Режими", "AI Models": "Моделі AI",
+    "Transcribe Audio": "Розшифрувати аудіо", "Transcribe": "Розшифрувати", "History": "Історія", "Audio": "Аудіо", "Dictionary": "Словник",
+    "Interface": "Інтерфейс", "General": "Загальні", "Language": "Мова", "System": "Як у macOS", "Appearance": "Вигляд",
+    "Model": "Модель", "Local": "Локально", "Cloud": "Хмара", "Microphone": "Мікрофон", "Accessibility": "Універсальний доступ",
+    "Screen Recording": "Запис екрана", "Allow": "Дозволити", "Granted": "Дозволено", "Continue": "Продовжити", "Recheck": "Перевірити",
+    "Verify API Key": "Перевірка API-ключа", "Test connection": "Перевірити з’єднання", "Get API key": "Отримати API-ключ",
+    "Shortcuts": "Клавіші", "Launch at Login": "Запускати після входу", "Toggle Recorder": "Увімкнути запис", "Quit Local Voice": "Вийти з Local Voice",
+    "Import Local Model…": "Імпортувати локальну модель…", "Gemini API Key": "API-ключ Gemini", "AI Provider Integration": "Інтеграція з AI"
+  },
+  "ru": {
+    "Settings": "Настройки", "Dashboard": "Обзор", "Modes": "Режимы", "AI Models": "AI-модели",
+    "Transcribe Audio": "Расшифровать аудио", "Transcribe": "Расшифровать", "History": "История", "Audio": "Аудио", "Dictionary": "Словарь",
+    "Interface": "Интерфейс", "General": "Общие", "Language": "Язык", "System": "Как в macOS", "Appearance": "Оформление",
+    "Model": "Модель", "Local": "Локально", "Cloud": "Облако", "Microphone": "Микрофон", "Accessibility": "Универсальный доступ",
+    "Screen Recording": "Запись экрана", "Allow": "Разрешить", "Granted": "Разрешено", "Continue": "Продолжить", "Recheck": "Перепроверить",
+    "Verify API Key": "Проверка API-ключа", "Test connection": "Проверить соединение", "Get API key": "Получить API-ключ",
+    "Shortcuts": "Горячие клавиши", "Launch at Login": "Запускать при входе", "Toggle Recorder": "Включить запись", "Quit Local Voice": "Выйти из Local Voice",
+    "Import Local Model…": "Импортировать локальную модель…", "Gemini API Key": "API-ключ Gemini", "AI Provider Integration": "Интеграция с AI"
+  }
+}
