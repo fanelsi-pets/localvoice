@@ -139,9 +139,9 @@ struct LocalVoiceApp: App {
             transcriptionModelManager.usableModels.contains(where: { $0.name == restored.name })
         } ?? false
         if !restoredModelIsUsable,
-            let bundledDefault = transcriptionModelManager.usableModels.first(where: {
+            let bundledDefault = transcriptionModelManager.allAvailableModels.first(where: {
                 $0.provider == .gemini || $0.provider == .openAI
-            }) ?? transcriptionModelManager.usableModels.first
+            })
         {
             transcriptionModelManager.setDefaultTranscriptionModel(bundledDefault)
         }
