@@ -15,7 +15,7 @@ enum ViewType: String, CaseIterable, Identifiable {
 }
 
 final class MainWindowNavigation: ObservableObject {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     @Published var selectedView: ViewType = .dashboard
 
@@ -35,7 +35,7 @@ final class MainWindowNavigation: ObservableObject {
 }
 
 struct ContentView: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "ContentView")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
     @EnvironmentObject private var navigation: MainWindowNavigation
 

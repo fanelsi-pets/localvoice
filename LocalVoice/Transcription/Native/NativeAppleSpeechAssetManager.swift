@@ -18,7 +18,7 @@ enum NativeAppleSpeechAssetState: Equatable {
 
 enum NativeAppleSpeechAssetManager {
     private static let logger = Logger(
-        subsystem: "com.prakashjoshipax.localvoice", category: "NativeAppleSpeechAssetManager")
+        subsystem: "app.localvoice.LocalVoice", category: "NativeAppleSpeechAssetManager")
 
     static func assetState(for localeIdentifier: String) async -> NativeAppleSpeechAssetState {
         guard #available(macOS 26, *) else {

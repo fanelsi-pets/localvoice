@@ -55,11 +55,6 @@ final class OnboardingFlowController {
         moveToExperienceStep(0, enhancementService: enhancementService)
     }
 
-    func goToLicenseStep(isTranscriptionSetupReady: Bool) {
-        guard coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) else { return }
-        coordinator.storedStage = OnboardingStage.license.rawValue
-    }
-
     func goToContextAwarenessStep(isTranscriptionSetupReady: Bool) {
         guard coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady),
             coordinator.shouldShowContextAwarenessAfterCurrentExperience
@@ -168,15 +163,6 @@ final class OnboardingFlowController {
         refreshExperienceModeState(enhancementService: enhancementService)
     }
 
-    func goToPreviousLicenseStep(isTranscriptionSetupReady: Bool) {
-        guard coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) else {
-            coordinator.storedStage = OnboardingStage.api.rawValue
-            return
-        }
-
-        coordinator.storedStage = OnboardingStage.trust.rawValue
-    }
-
     func advanceExperienceStep(
         isTranscriptionSetupReady: Bool,
         enhancementService: AIEnhancementService
@@ -194,23 +180,6 @@ final class OnboardingFlowController {
                 coordinator.normalizedExperienceStepIndex + 1,
                 enhancementService: enhancementService
             )
-        }
-    }
-
-    func startLicenseTrial(
-        isTranscriptionSetupReady: Bool,
-        onComplete: () -> Void
-    ) {
-        coordinator.licenseViewModel.startTrial()
-        completeOnboarding(
-            isTranscriptionSetupReady: isTranscriptionSetupReady,
-            onComplete: onComplete
-        )
-    }
-
-    func activateLicense() {
-        Task { @MainActor in
-            await coordinator.licenseViewModel.validateLicense()
         }
     }
 
@@ -235,8 +204,7 @@ final class OnboardingFlowController {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
         }
 
-        if (coordinator.stage == .experience || coordinator.stage == .contextAwareness || coordinator.stage == .trust
-            || coordinator.stage == .license)
+        if (coordinator.stage == .experience || coordinator.stage == .contextAwareness || coordinator.stage == .trust)
             && !coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady)
         {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
@@ -309,8 +277,7 @@ final class OnboardingFlowController {
         onComplete: () -> Void
     ) {
         guard
-            coordinator.stage == .license
-                || coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady)
+            coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady)
         else {
             return
         }

@@ -8,7 +8,7 @@ Local Voice uses local transcription by default. It also offers an explicit opt-
 2. `LocalOnlyNetworkBlocker` rejects URL Loading System requests whose scheme is HTTP, HTTPS, WS, or WSS unless the destination host is exactly `generativelanguage.googleapis.com`.
 3. `CloudProviderRegistry` exposes Gemini only. Groq and other remote providers are unavailable.
 4. CloudKit is disabled for every SwiftData store.
-5. License activation, announcements, and automatic update checks are disabled.
+5. The app has no licensing, announcement, telemetry, or automatic-update services.
 
 ## Gemini mode
 

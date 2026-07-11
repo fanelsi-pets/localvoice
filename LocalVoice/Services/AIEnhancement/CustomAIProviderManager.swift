@@ -47,7 +47,7 @@ final class CustomAIProviderManager: ObservableObject {
 
     @Published private(set) var providers: [CustomAIProviderConfig] = []
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "CustomAIProviderManager")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "CustomAIProviderManager")
     private let providersKey = "customAIProviders"
     private let defaults = UserDefaults.standard
 

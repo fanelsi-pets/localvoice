@@ -18,7 +18,7 @@ The easiest way to build LocalVoice is using the included Makefile, which automa
 
 ```bash
 # Clone the repository
-git clone https://github.com/Beingpax/LocalVoice.git
+git clone https://github.com/fanelsi-pets/localvoice.git
 cd LocalVoice
 
 # Build everything (recommended for first-time setup)
@@ -59,7 +59,7 @@ This approach ensures consistent builds across different machines and eliminates
 If you don't have an Apple Developer certificate, use `make local`:
 
 ```bash
-git clone https://github.com/Beingpax/LocalVoice.git
+git clone https://github.com/fanelsi-pets/localvoice.git
 cd LocalVoice
 make local
 open ~/Downloads/LocalVoice.app
@@ -96,7 +96,7 @@ This will create the XCFramework at `build-apple/whisper.xcframework`.
 
 1. Clone the LocalVoice repository:
 ```bash
-git clone https://github.com/Beingpax/LocalVoice.git
+git clone https://github.com/fanelsi-pets/localvoice.git
 cd LocalVoice
 ```
 
@@ -136,4 +136,4 @@ If you encounter any build issues:
 4. Verify all dependencies are properly installed
 5. Make sure whisper.xcframework is properly built and linked
 
-For more help, please check the [issues](https://github.com/Beingpax/LocalVoice/issues) section or create a new issue.
+For more help, please check the [issues](https://github.com/fanelsi-pets/localvoice/issues) section or create a new issue.

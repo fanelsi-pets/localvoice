@@ -6,7 +6,7 @@ import os
 @MainActor
 class Recorder: NSObject, ObservableObject {
     private var recorder: CoreAudioRecorder?
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "Recorder")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "Recorder")
     private let deviceManager = AudioDeviceManager.shared
     private var deviceSwitchObserver: NSObjectProtocol?
     private var audioDeviceChangedObserver: NSObjectProtocol?
@@ -15,9 +15,9 @@ class Recorder: NSObject, ObservableObject {
     private let playbackController = PlaybackController.shared
     @Published var audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
     private var audioMeterUpdateTimer: DispatchSourceTimer?
-    private let audioMeterQueue = DispatchQueue(label: "com.prakashjoshipax.localvoice.audiometer", qos: .userInteractive)
+    private let audioMeterQueue = DispatchQueue(label: "app.localvoice.LocalVoice.audiometer", qos: .userInteractive)
     /// Dedicated serial queue for hardware setup.
-    private let audioSetupQueue = DispatchQueue(label: "com.prakashjoshipax.localvoice.audioSetup", qos: .userInitiated)
+    private let audioSetupQueue = DispatchQueue(label: "app.localvoice.LocalVoice.audioSetup", qos: .userInitiated)
     private let recordingAudioActionDelayNanoseconds: UInt64 = 220_000_000
     private var audioMuteTask: Task<Void, Never>?
     private var mediaPauseTask: Task<Void, Never>?

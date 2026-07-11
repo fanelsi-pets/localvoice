@@ -5,7 +5,7 @@ import os
 
 /// Audio device configuration queries (does NOT modify system default device)
 class AudioDeviceConfiguration {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "AudioDeviceConfiguration")
+    private static let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "AudioDeviceConfiguration")
 
     /// Gets the current system default input device (for reference only)
     static func getDefaultInputDevice() -> AudioDeviceID? {

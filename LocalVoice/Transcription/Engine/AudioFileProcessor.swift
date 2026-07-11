@@ -3,7 +3,7 @@ import Foundation
 import os
 
 class AudioProcessor {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "AudioProcessor")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "AudioProcessor")
 
     struct AudioFormat {
         static let targetSampleRate: Double = 16000.0

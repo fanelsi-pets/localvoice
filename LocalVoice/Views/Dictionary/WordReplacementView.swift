@@ -236,7 +236,7 @@ struct WordReplacementInfoPopover: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
-                Text("Voicing, Voice ink, Voiceing")
+                Text("Voicing, Local Voice, LocalVoice")
                     .font(.callout)
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -282,7 +282,7 @@ struct WordReplacementInfoPopover: View {
                         Text("Original:")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("Voicing, Voice ink")
+                        Text("Voicing, Local Voice")
                             .font(.callout)
                     }
 

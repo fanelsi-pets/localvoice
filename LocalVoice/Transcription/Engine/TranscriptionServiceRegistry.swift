@@ -8,7 +8,7 @@ class TranscriptionServiceRegistry {
     private weak var modelProvider: (any WhisperModelProvider)?
     private let modelsDirectory: URL
     private let modelContext: ModelContext
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "TranscriptionServiceRegistry")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "TranscriptionServiceRegistry")
 
     private(set) lazy var localTranscriptionService = WhisperTranscriptionService(
         modelsDirectory: modelsDirectory,

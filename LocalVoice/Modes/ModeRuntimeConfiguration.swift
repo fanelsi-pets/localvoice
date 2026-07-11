@@ -150,7 +150,7 @@ enum ModeRuntimeResolver {
         }
 
         // A mode can retain the name of a cloud model after its key is removed,
-        // or an older VoiceInk model that Local Voice no longer ships. Never
+        // or an older Local Voice model that Local Voice no longer ships. Never
         // fall back to the first registry entry (Apple Speech), because that can
         // unexpectedly require a macOS language-asset download. Prefer the
         // user's current model, then the bundled offline Whisper model.

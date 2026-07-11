@@ -79,7 +79,7 @@ enum WindowDiagnostics {
 }
 
 enum AppPresentationPolicy {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private static let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     static func activateForUserFacingWindow(reason: String) {
         let beforePolicy = NSApplication.shared.activationPolicy()
@@ -124,10 +124,10 @@ enum AppPresentationPolicy {
 class WindowManager: NSObject {
     static let shared = WindowManager()
 
-    private static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("com.prakashjoshipax.localvoice.mainWindow")
+    private static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("app.localvoice.LocalVoice.mainWindow")
     private static let mainWindowAutosaveName = NSWindow.FrameAutosaveName("LocalVoiceMainWindowFrame")
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
     private weak var mainWindow: NSWindow?
     private var didApplyInitialPlacement = false
     private var shouldShowNextConfiguredMainWindow = false

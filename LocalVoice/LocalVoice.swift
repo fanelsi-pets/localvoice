@@ -16,14 +16,12 @@ struct LocalVoiceApp: App {
     @StateObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var recorderUIManager: RecorderUIManager
     @StateObject private var recordingShortcutManager: RecordingShortcutManager
-    @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
     @StateObject private var mainWindowNavigation = MainWindowNavigation()
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
-    @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
     @State private var didShowAccessibilityReminder = false
 
@@ -47,7 +45,7 @@ struct LocalVoiceApp: App {
         AppAppearancePreference.applyStored()
         OnboardingV2Migration.prepareIfNeeded()
 
-        let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "Initialization")
+        let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "Initialization")
         // Keep existing model order stable; append new models after synced entities.
         let schema = Schema([
             Transcription.self,
@@ -96,15 +94,12 @@ struct LocalVoiceApp: App {
         let aiService = AIService()
         _aiService = StateObject(wrappedValue: aiService)
 
-        let updaterViewModel = UpdaterViewModel()
-        _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
-
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.LocalVoice")
+            .appendingPathComponent("app.localvoice.LocalVoice")
         let modelsDirectory = appSupportDirectory.appendingPathComponent("WhisperModels")
 
         // 2. Create model managers
@@ -231,7 +226,7 @@ struct LocalVoiceApp: App {
 
     private static func createPersistentContainer(schema: Schema, logger: Logger) throws -> ModelContainer {
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.LocalVoice", isDirectory: true)
+            .appendingPathComponent("app.localvoice.LocalVoice", isDirectory: true)
 
         try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
 
@@ -303,7 +298,6 @@ struct LocalVoiceApp: App {
                         .environmentObject(transcriptionModelManager)
                         .environmentObject(recorderUIManager)
                         .environmentObject(recordingShortcutManager)
-                        .environmentObject(updaterViewModel)
                         .environmentObject(menuBarManager)
                         .environmentObject(mainWindowNavigation)
                         .environmentObject(aiService)
@@ -325,7 +319,7 @@ struct LocalVoiceApp: App {
 
                             // Process any pending open-file request now that the main ContentView is ready.
                             if let pendingURL = appDelegate.pendingOpenFileURL {
-                                Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow").notice(
+                                Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow").notice(
                                     "🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))"
                                 )
                                 NotificationCenter.default.post(
@@ -363,7 +357,6 @@ struct LocalVoiceApp: App {
                             })
                 }
             }
-            .confettiCelebrationPresenter()
             .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .windowStyle(.hiddenTitleBar)
@@ -405,7 +398,7 @@ struct LocalVoiceApp: App {
 }
 
 private struct MainWindowRequestBridge: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     @Environment(\.openWindow) private var openWindow
     let menuBarManager: MenuBarManager
@@ -431,30 +424,6 @@ private struct MainWindowRequestBridge: View {
                     logger.notice("🧭 SwiftUI bridge requested existing main window presentation.")
                 }
             }
-    }
-}
-
-class UpdaterViewModel: ObservableObject {
-    @Published var canCheckForUpdates = false
-    @Published var automaticallyChecksForUpdates = false
-
-    init() {}
-
-    func setAutomaticallyChecksForUpdates(_ value: Bool) {
-        automaticallyChecksForUpdates = false
-    }
-
-    func checkForUpdates() {
-        // Updates are intentionally manual in this network-isolated build.
-    }
-}
-
-struct CheckForUpdatesView: View {
-    @ObservedObject var updaterViewModel: UpdaterViewModel
-
-    var body: some View {
-        Button("Check for Updates…", action: updaterViewModel.checkForUpdates)
-            .disabled(!updaterViewModel.canCheckForUpdates)
     }
 }
 

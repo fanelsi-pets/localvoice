@@ -10,7 +10,7 @@ struct OnboardingTrustScreen: View {
         OnboardingStepScreen(
             systemImage: "lock.shield",
             title: "Privacy Starts Here",
-            subtitle: "Review how LocalVoice handles your data before choosing a license.",
+            subtitle: "Review how Local Voice handles your data before you begin.",
             contentMaxWidth: max(contentMaxWidth, 720),
             showsHeader: false,
             contentYOffset: 0
@@ -79,7 +79,7 @@ private struct TrustBody: View {
                     .foregroundColor(AppTheme.Text.primary)
                     .multilineTextAlignment(.center)
 
-                Text("Local Voice is open source and cannot make network connections. Audio, transcripts, and settings remain on this Mac.")
+                Text("Local transcription stays on this Mac. Cloud transcription is used only when you explicitly choose Gemini or OpenAI in settings.")
                     .font(.system(size: 13))
                     .foregroundColor(AppTheme.Text.secondary)
                     .multilineTextAlignment(.center)

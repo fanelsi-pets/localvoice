@@ -26,7 +26,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
     // MARK: - Properties
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "CoreAudioRecorder")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "CoreAudioRecorder")
 
     private var audioUnit: AudioUnit?
     private var audioFile: ExtAudioFileRef?
@@ -63,7 +63,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
     // Keep the render callback realtime-safe; processing is best-effort under sustained overload.
     private let audioProcessingQueue = DispatchQueue(
-        label: "com.prakashjoshipax.localvoice.audioProcessing", qos: .userInitiated)
+        label: "app.localvoice.LocalVoice.audioProcessing", qos: .userInitiated)
     private let audioProcessingQueueKey = DispatchSpecificKey<Void>()
     private let maxFramesPerRender: UInt32 = 4096
     private let inputRingSlotCount = 96

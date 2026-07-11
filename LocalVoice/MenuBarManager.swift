@@ -6,7 +6,7 @@ import SwiftUI
 
 @MainActor
 class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     @Published var isMenuBarOnly: Bool {
         didSet {

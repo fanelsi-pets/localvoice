@@ -26,7 +26,7 @@ class TranscriptionPipeline {
     private let serviceRegistry: TranscriptionServiceRegistry
     private let enhancementService: AIEnhancementService?
     private let delivery = TranscriptionDelivery()
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "TranscriptionPipeline")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "TranscriptionPipeline")
 
     init(
         modelContext: ModelContext,

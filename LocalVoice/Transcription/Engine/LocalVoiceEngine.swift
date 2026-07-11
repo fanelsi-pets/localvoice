@@ -121,7 +121,7 @@ class LocalVoiceEngine: NSObject, ObservableObject {
     let assistantChat: AssistantChatService?
     private let pipeline: TranscriptionPipeline
 
-    let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "LocalVoiceEngine")
+    let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "LocalVoiceEngine")
 
     init(
         modelContext: ModelContext,
@@ -143,7 +143,7 @@ class LocalVoiceEngine: NSObject, ObservableObject {
         }
 
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.LocalVoice")
+            .appendingPathComponent("app.localvoice.LocalVoice")
         self.recordingsDirectory = appSupportDirectory.appendingPathComponent("Recordings")
 
         self.serviceRegistry = TranscriptionServiceRegistry(

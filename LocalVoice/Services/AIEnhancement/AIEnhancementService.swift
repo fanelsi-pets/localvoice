@@ -6,7 +6,7 @@ import os
 
 @MainActor
 class AIEnhancementService: ObservableObject {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "AIEnhancementService")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "AIEnhancementService")
 
     @Published var customPrompts: [CustomPrompt] {
         didSet {

@@ -62,7 +62,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private weak var engine: LocalVoiceEngine?
     private var recorder: Recorder?
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "RecorderUIManager")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "RecorderUIManager")
 
     init() {}
 

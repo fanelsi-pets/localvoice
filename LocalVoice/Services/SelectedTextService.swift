@@ -5,7 +5,7 @@ import os
 
 @MainActor
 final class SelectedTextService {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "SelectedTextService")
+    private static let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "SelectedTextService")
     private static let textManager = SelectedTextManager.shared
     private static let selectedTextStrategies: [TextStrategy] = [
         .accessibility,

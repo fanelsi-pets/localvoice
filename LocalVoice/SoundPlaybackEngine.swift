@@ -9,8 +9,8 @@ final class SoundPlaybackEngine: @unchecked Sendable {
         case esc
     }
 
-    private let queue = DispatchQueue(label: "com.prakashjoshipax.localvoice.soundPlayback", qos: .userInitiated)
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "SoundPlaybackEngine")
+    private let queue = DispatchQueue(label: "app.localvoice.LocalVoice.soundPlayback", qos: .userInitiated)
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "SoundPlaybackEngine")
 
     private var startSound: AVAudioPlayer?
     private var stopSound: AVAudioPlayer?

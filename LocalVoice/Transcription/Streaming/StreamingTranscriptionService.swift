@@ -106,7 +106,7 @@ enum StreamingState {
 @MainActor
 class StreamingTranscriptionService {
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "StreamingTranscriptionService")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "StreamingTranscriptionService")
     private var provider: StreamingTranscriptionProvider?
     private var sendTask: Task<Void, Never>?
     private var eventConsumerTask: Task<Void, Never>?

@@ -5,12 +5,12 @@ import SwiftData
 class TranscriptionAutoCleanupService {
     static let shared = TranscriptionAutoCleanupService()
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "TranscriptionAutoCleanupService")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "TranscriptionAutoCleanupService")
     private var modelContext: ModelContext?
 
     private var recordingsDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.LocalVoice")
+            .appendingPathComponent("app.localvoice.LocalVoice")
             .appendingPathComponent("Recordings")
     }
 

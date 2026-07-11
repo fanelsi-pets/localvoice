@@ -5,7 +5,7 @@ import os
 final class APIKeyManager {
     static let shared = APIKeyManager()
 
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "APIKeyManager")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "APIKeyManager")
     private let keychain = KeychainService.shared
 
     /// Provider to Keychain identifier mapping (iOS compatible for iCloud sync).

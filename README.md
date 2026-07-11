@@ -1,35 +1,36 @@
 # Local Voice
 
-Local Voice is a native macOS voice-to-text application with local transcription by default and an optional Gemini transcription mode.
+Local Voice is a native macOS dictation app built around private on-device transcription with optional Gemini and OpenAI providers.
 
-The interface and core transcription workflow are derived from [VoiceInk](https://github.com/Beingpax/VoiceInk). This fork keeps the familiar native macOS experience while removing cloud services, license activation, announcements, automatic updates, and CloudKit sync.
+## Features
 
-## Privacy modes
+- Bundled Whisper Base model for offline transcription.
+- Optional downloadable Whisper models, including Medium and Large variants.
+- Optional Gemini and OpenAI transcription and text enhancement.
+- Ukrainian, Russian, and English interface and dictation languages.
+- Global recording shortcuts and a dynamic menu-bar control.
+- Local transcript history, dictionary, audio-device settings, and custom modes.
+- API keys stored in the macOS Keychain.
 
-- Local Whisper transcription keeps recordings and transcripts on this Mac.
-- Gemini is opt-in: audio is sent to `generativelanguage.googleapis.com` only after the user selects Gemini and supplies an API key.
-- An in-process allowlist blocks HTTP, HTTPS, WS, and WSS requests to every other host.
-- Only local Whisper, FluidAudio, or supported on-device Apple models appear in the model registry.
-- Groq and all cloud providers other than Gemini are not registered.
-- Dictionary, history, statistics, audio, and settings use local storage only.
-- License activation, remote announcements, and Sparkle updates are disabled.
+## Privacy
 
-See [PRIVACY.md](PRIVACY.md) for the auditable implementation details.
+- Local Whisper keeps audio and transcripts on this Mac.
+- Cloud providers are disabled until the user explicitly adds an API key and selects a cloud model.
+- Network access is restricted to the configured Gemini and OpenAI API hosts.
+- Local Voice does not operate an intermediary server.
 
-## Models
-
-Local Voice does not download a model at runtime because that would require network access. Import a compatible Whisper model from disk, or place it in the app's local model directory before launching. Model files can be obtained separately and transferred to the Mac using any method you trust.
+See [PRIVACY.md](PRIVACY.md) for implementation details.
 
 ## Build
 
-Requirements: macOS 14.4+, full Xcode, Git, and Swift.
+Requirements: macOS 14.4+, Xcode, Git, CMake, and Swift.
 
 ```sh
 make local
 ```
 
-The command builds `whisper.xcframework` as a development dependency and produces `~/Downloads/LocalVoice.app`. Network access used by Git/Xcode during source dependency resolution is a build-time action; the resulting app remains sandboxed without network permissions.
+The Xcode project also supports an ad-hoc signed Debug build without an Apple Developer account.
 
-## License and attribution
+## License
 
-Local Voice is distributed under GNU GPL v3, matching the upstream VoiceInk license. Copyright in upstream code remains with its respective authors. The Local Voice name and supplied application icon identify this fork and do not imply endorsement by the VoiceInk authors.
+Local Voice is distributed under GNU GPL v3. Third-party copyright and dependency notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

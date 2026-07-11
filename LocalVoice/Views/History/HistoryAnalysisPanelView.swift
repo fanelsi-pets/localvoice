@@ -161,9 +161,15 @@ private struct HistoryPerformanceAccumulator {
             name: name,
             kind: kind,
             averageProcessingDuration: averageProcessingDuration,
-            averageLatencyText: Formatters.formattedPreciseDuration(averageProcessingDuration),
+            averageLatencyText: Self.formattedDuration(averageProcessingDuration),
             detail: speedFactor.map { String(format: String(localized: "%.1fx realtime"), $0) }
         )
+    }
+
+    private static func formattedDuration(_ duration: TimeInterval) -> String {
+        duration < 1
+            ? String(format: String(localized: "%.0f ms"), duration * 1_000)
+            : String(format: String(localized: "%.2f s"), duration)
     }
 }
 
@@ -171,17 +177,8 @@ private enum HistoryPerformanceKind: String {
     case transcription
     case enhancement
 
-    var modelInsightKind: ModelInsightKind {
-        switch self {
-        case .transcription:
-            return .transcription
-        case .enhancement:
-            return .enhancement
-        }
-    }
-
     var kindTitle: String {
-        modelInsightKind == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
+        self == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
     }
 }
 
@@ -250,7 +247,11 @@ private struct HistoryPerformanceRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            ModelProviderIcon(modelName: row.name, kind: row.kind.modelInsightKind, size: 24)
+            Image(systemName: row.kind == .transcription ? "waveform" : "sparkles")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .frame(width: 24, height: 24)
+                .background(AppTheme.Surface.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.name)

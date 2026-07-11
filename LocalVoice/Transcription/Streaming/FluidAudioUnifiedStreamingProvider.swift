@@ -4,7 +4,7 @@ import os
 
 /// True streaming provider backed by FluidAudio's Parakeet Unified manager.
 final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "FluidAudioUnifiedStreaming")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "FluidAudioUnifiedStreaming")
     private var manager: StreamingUnifiedAsrManager?
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
 

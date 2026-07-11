@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     weak var menuBarManager: MenuBarManager?
 

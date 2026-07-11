@@ -3,7 +3,7 @@ import OSLog
 import SwiftUI
 
 struct MenuBarView: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.localvoice", category: "MenuBarWindowFlow")
+    private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject var engine: LocalVoiceEngine
@@ -13,7 +13,6 @@ struct MenuBarView: View {
     @EnvironmentObject var recordingShortcutManager: RecordingShortcutManager
     @EnvironmentObject var menuBarManager: MenuBarManager
     @EnvironmentObject var mainWindowNavigation: MainWindowNavigation
-    @EnvironmentObject var updaterViewModel: UpdaterViewModel
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var aiService: AIService
     @ObservedObject private var modeManager = ModeManager.shared
