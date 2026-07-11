@@ -299,6 +299,17 @@ struct SettingsView: View {
             Section("Diagnostics") {
                 DiagnosticsSettingsView()
             }
+
+            Section {
+                HStack {
+                    Spacer()
+                    Text(versionLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .accessibilityIdentifier("localVoice.settings.version")
+            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -323,6 +334,12 @@ struct SettingsView: View {
         keyCode: UInt16(kVK_Escape),
         modifierFlags: []
     )
+
+    private var versionLabel: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return String(format: String(localized: "Version %@ (%@)"), version, build)
+    }
 
     private var transcriptionModelSelection: Binding<String> {
         Binding(

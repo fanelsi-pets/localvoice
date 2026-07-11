@@ -7,6 +7,11 @@ final class LocalOnlyNetworkBlocker: URLProtocol {
     private static let allowedHosts: Set<String> = [
         "generativelanguage.googleapis.com",
         "api.openai.com",
+        "api.anthropic.com",
+        "api.github.com",
+        "github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com",
     ]
 
     static func install() {

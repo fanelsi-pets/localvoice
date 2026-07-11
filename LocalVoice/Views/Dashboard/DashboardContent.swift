@@ -5,6 +5,7 @@ struct DashboardContent: View {
     @EnvironmentObject private var engine: LocalVoiceEngine
     @EnvironmentObject private var recorderUIManager: RecorderUIManager
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
+    @State private var latestTranscript = ""
 
     var body: some View {
         GeometryReader { geometry in
@@ -13,8 +14,8 @@ struct DashboardContent: View {
                     LocalVoiceHomeFlow(
                         state: engine.recordingState,
                         modelName: engine.transcriptionModelManager.currentTranscriptionModel?.displayName
-                            ?? String(localized: "Base"),
-                        languageCode: UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en",
+                            ?? String(localized: "Choose a model"),
+                        latestTranscript: latestTranscript,
                         onToggleRecording: recorderUIManager.handleToggleRecorderPanelNotification
                     )
 
@@ -31,6 +32,15 @@ struct DashboardContent: View {
         .onAppear(perform: refreshAccessibilityStatus)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibilityStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .transcriptionCompleted)) { notification in
+            guard let transcription = notification.object as? Transcription else { return }
+            let result = (transcription.enhancedText?.isEmpty == false)
+                ? transcription.enhancedText ?? transcription.text
+                : transcription.text
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.8)) {
+                latestTranscript = result
+            }
         }
     }
 
@@ -49,7 +59,7 @@ struct DashboardContent: View {
 private struct LocalVoiceHomeFlow: View {
     let state: RecordingState
     let modelName: String
-    let languageCode: String
+    let latestTranscript: String
     let onToggleRecording: () -> Void
     @State private var isPulsing = false
 
@@ -57,7 +67,7 @@ private struct LocalVoiceHomeFlow: View {
 
     private var title: LocalizedStringKey {
         switch state {
-        case .idle: return "Ready to dictate"
+        case .idle: return latestTranscript.isEmpty ? "Test your dictation" : "Dictation works"
         case .starting: return "Preparing microphone…"
         case .recording: return "Listening…"
         case .transcribing: return "Creating transcript…"
@@ -68,20 +78,15 @@ private struct LocalVoiceHomeFlow: View {
 
     private var subtitle: LocalizedStringKey {
         switch state {
-        case .idle: return "Press Right Command or use the button below."
+        case .idle:
+            return latestTranscript.isEmpty
+                ? "Dictate a short phrase to make sure everything works."
+                : "Your latest transcription is shown below."
         case .starting: return "Local Voice is getting ready."
         case .recording: return "Speak naturally. Press the shortcut again when finished."
         case .transcribing: return "Your recording stays in the selected transcription flow."
         case .enhancing: return "Applying your selected text model."
         case .busy: return "Your transcript will be ready in a moment."
-        }
-    }
-
-    private var languageName: String {
-        switch languageCode {
-        case "uk": return String(localized: "Ukrainian")
-        case "ru": return String(localized: "Russian")
-        default: return String(localized: "English")
         }
     }
 
@@ -148,10 +153,24 @@ private struct LocalVoiceHomeFlow: View {
                 flowStep("Ready", systemImage: "checkmark", isComplete: state == .busy)
             }
 
+            if !latestTranscript.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("What we heard", systemImage: "quote.bubble.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.Accent.primary)
+                    Text(latestTranscript)
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(16)
+                .background(AppTheme.Accent.fill, in: RoundedRectangle(cornerRadius: 14))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             Divider()
 
             HStack(spacing: 18) {
-                infoPill(title: "Language", value: languageName, systemImage: "globe")
                 infoPill(title: "Model", value: modelName, systemImage: "cpu")
                 Spacer()
                 Text("Audio is processed according to the selected local or cloud model.")
