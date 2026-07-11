@@ -6,7 +6,7 @@ enum AppLanguagePreference {
 
     private static let appleLanguagesKey = "AppleLanguages"
     private static let managesAppleLanguagesKey = "AppLanguagePreferenceManagedAppleLanguages"
-    private static let bundledLanguageIdentifiers = ["en", "uk", "ru"]
+    private static let bundledLanguageIdentifiers = ["en", "uk"]
 
     struct Option: Identifiable, Hashable {
         let id: String

@@ -108,8 +108,18 @@ class WhisperModelManager: ObservableObject {
             && !sourceURL.lastPathComponent.hasPrefix("ggml-silero-")
         {
             let destinationURL = modelsDirectory.appendingPathComponent(sourceURL.lastPathComponent)
-            guard !FileManager.default.fileExists(atPath: destinationURL.path) else { continue }
             do {
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    let sourceSize = try sourceURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                    let destinationSize = try destinationURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+
+                    // Repair clones made without Git LFS: those contain a tiny
+                    // pointer text file instead of the bundled Whisper model.
+                    guard sourceSize > 10_000_000, destinationSize < 1_000_000 else {
+                        continue
+                    }
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
                 try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
             } catch {
                 logError("Error installing bundled model", error)

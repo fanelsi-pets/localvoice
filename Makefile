@@ -4,7 +4,7 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run
+.PHONY: all clean whisper setup build local dmg check healthcheck help dev run
 
 # Default target
 all: check build
@@ -93,6 +93,13 @@ run:
 		fi; \
 	fi
 
+dmg: local
+	@mkdir -p "$(CURDIR)/dist"
+	@chmod +x "$(CURDIR)/scripts/create-dmg.sh"
+	@"$(CURDIR)/scripts/create-dmg.sh" \
+		"$(LOCAL_DERIVED_DATA)/Build/Products/Debug/LocalVoice.app" \
+		"$(CURDIR)/dist/LocalVoice.dmg"
+
 # Cleanup
 clean:
 	@echo "Cleaning build artifacts..."
@@ -108,6 +115,7 @@ help:
 	@echo "  build              Build the LocalVoice Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"
 	@echo "  run                Launch the built LocalVoice app"
+	@echo "  dmg                Build an installable DMG and SHA-256 checksum"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  all                Run full build process (default)"
 	@echo "  clean              Remove build artifacts"

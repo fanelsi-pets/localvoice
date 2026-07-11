@@ -90,7 +90,7 @@ enum OnboardingStage: String, CaseIterable {
     }
 
     static var baseStepCount: Int {
-        4
+        3
     }
 }
 
