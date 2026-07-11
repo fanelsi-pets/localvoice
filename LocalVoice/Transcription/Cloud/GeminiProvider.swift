@@ -11,12 +11,22 @@ struct GeminiProvider: CloudProvider {
     var models: [CloudModel] {
         [
             CloudModel(
-                name: "gemini-3.1-flash-lite",
-                displayName: "Gemini 3.1 Flash-Lite",
-                description: String(localized: "Google's current stable, low-latency multimodal model"),
+                name: "gemini-2.5-flash-lite",
+                displayName: "Gemini 2.5 Flash-Lite",
+                description: String(localized: "Google's smallest stable and most cost-efficient multimodal model"),
                 provider: .gemini,
                 speed: 0.95,
                 accuracy: 0.94,
+                isMultilingual: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
+            ),
+            CloudModel(
+                name: "gemini-2.5-flash",
+                displayName: "Gemini 2.5 Flash",
+                description: String(localized: "Higher-quality Gemini transcription with a higher API cost"),
+                provider: .gemini,
+                speed: 0.92,
+                accuracy: 0.96,
                 isMultilingual: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
             ),

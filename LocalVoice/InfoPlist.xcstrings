@@ -1,124 +1,160 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "comment": "Bundle display name",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Local Voice"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Local Voice"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Local Voice"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Local Voice"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Local Voice"
           }
         }
       }
     },
-    "CFBundleName": {
-      "comment": "Bundle name",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "LocalVoice"
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "LocalVoice"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local Voice"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice"
           }
         }
       }
     },
-    "CFBundleTypeName": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Audio/Video File"
+    "CFBundleTypeName" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Audio/Video File"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Аудіо/відеофайл"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аудио/видеофайл"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аудіо/відеофайл"
           }
         }
       }
     },
-    "NSAppleEventsUsageDescription": {
-      "comment": "Privacy - AppleEvents Sending Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "LocalVoice needs to interact with your browser to detect the current website for applying website-specific configurations."
+    "NSAppleEventsUsageDescription" : {
+      "comment" : "Privacy - AppleEvents Sending Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "LocalVoice needs to interact with your browser to detect the current website for applying website-specific configurations."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local Voice взаємодіє з браузером, щоб застосовувати налаштування для поточного сайту."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice взаимодействует с браузером, чтобы применять настройки для текущего сайта."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice взаємодіє з браузером, щоб застосовувати налаштування для поточного сайту."
           }
         }
       }
     },
-    "NSHumanReadableCopyright": {
-      "comment": "Copyright (human-readable)",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": ""
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ""
           }
         }
       }
     },
-    "NSMicrophoneUsageDescription": {
-      "comment": "Privacy - Microphone Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Local Voice needs microphone access to record audio for on-device transcription."
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Local Voice needs microphone access to record audio for on-device transcription."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "needs_review",
-            "value": "Local Voice потрібен доступ до мікрофона для запису та розшифрування мови."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Local Voice нужен доступ к микрофону для записи и расшифровки речи."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Local Voice потрібен доступ до мікрофона для запису та розшифрування мови."
           }
         }
       }
     },
-    "NSScreenCaptureUsageDescription": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "LocalVoice needs screen recording access to understand context from your screen for improved transcription accuracy."
+    "NSScreenCaptureUsageDescription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "LocalVoice needs screen recording access to understand context from your screen for improved transcription accuracy."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local Voice використовує вміст екрана як локальний контекст для точнішого тексту."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice использует содержимое экрана как локальный контекст для более точного текста."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local Voice використовує вміст екрана як локальний контекст для точнішого тексту."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

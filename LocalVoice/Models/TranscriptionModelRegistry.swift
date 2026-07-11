@@ -19,6 +19,17 @@ enum TranscriptionModelRegistry {
 
             // Parakeet Models
             FluidAudioModel(
+                name: "parakeet-tdt-0.6b-v2",
+                displayName: "Parakeet V2",
+                description: String(localized: "NVIDIA's Parakeet V2 model optimized for lightning-fast English-only transcription"),
+                size: "474 MB",
+                speed: 0.99,
+                accuracy: 0.94,
+                ramUsage: 0.8,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .fluidAudio)
+            ),
+            FluidAudioModel(
                 name: "parakeet-tdt-0.6b-v3",
                 displayName: "Parakeet V3",
                 description: String(localized: "Parakeet V3 with English and 25 European language support"),
@@ -28,6 +39,17 @@ enum TranscriptionModelRegistry {
                 ramUsage: 0.8,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
+            ),
+            FluidAudioModel(
+                name: "parakeet-unified-0.6b",
+                displayName: "Parakeet Unified",
+                description: String(localized: "English-only Parakeet model with native realtime transcription support"),
+                size: "1.2 GB",
+                speed: 0.99,
+                accuracy: 0.95,
+                ramUsage: 1.0,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .fluidAudio)
             ),
             FluidAudioModel(
                 name: "nemotron-latin-0.6b",
@@ -64,6 +86,16 @@ enum TranscriptionModelRegistry {
                 ramUsage: 0.3
             ),
             WhisperModel(
+                name: "ggml-tiny.en",
+                displayName: "Tiny (English)",
+                size: "75 MB",
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .whisper),
+                description: String(localized: "Tiny model optimized for English, fastest, least accurate"),
+                speed: 0.95,
+                accuracy: 0.65,
+                ramUsage: 0.3
+            ),
+            WhisperModel(
                 name: "ggml-base",
                 displayName: "Base",
                 size: "142 MB",
@@ -74,6 +106,16 @@ enum TranscriptionModelRegistry {
                 ramUsage: 0.5
             ),
             WhisperModel(
+                name: "ggml-base.en",
+                displayName: "Base (English)",
+                size: "142 MB",
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .whisper),
+                description: String(localized: "Base model optimized for English, good balance between speed and accuracy"),
+                speed: 0.85,
+                accuracy: 0.75,
+                ramUsage: 0.5
+            ),
+            WhisperModel(
                 name: "ggml-medium",
                 displayName: "Medium",
                 size: "1.5 GB",
@@ -81,6 +123,16 @@ enum TranscriptionModelRegistry {
                 description: String(localized: "More accurate multilingual Whisper model; downloaded on demand"),
                 speed: 0.5,
                 accuracy: 0.9,
+                ramUsage: 2.6
+            ),
+            WhisperModel(
+                name: "ggml-medium.en",
+                displayName: "Medium (English)",
+                size: "1.5 GB",
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .whisper),
+                description: String(localized: "More accurate English-only Whisper model; downloaded on demand"),
+                speed: 0.5,
+                accuracy: 0.91,
                 ramUsage: 2.6
             ),
             WhisperModel(

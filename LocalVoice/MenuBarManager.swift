@@ -40,33 +40,21 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         )
     }
 
-    func ensureStatusItemInstalled() {
-        installStatusItem()
-        statusItem?.isVisible = true
-        updateStatusItem(for: engine?.recordingState ?? .idle)
-    }
-
     private func installStatusItem() {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            let image = menuBarImage()
+            let image = NSImage(named: "menuBarIcon")
             image?.isTemplate = true
             image?.size = NSSize(width: 18, height: 18)
             button.image = image
             button.imagePosition = .imageOnly
-            button.contentTintColor = nil
             button.toolTip = "Local Voice"
         }
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
         statusItem = item
-    }
-
-    private func menuBarImage() -> NSImage? {
-        NSImage(named: "menuBarIcon")
-            ?? NSImage(systemSymbolName: "waveform", accessibilityDescription: "Local Voice")
     }
 
     @objc private func openSettingsFromStatusItem() {
@@ -174,41 +162,6 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         menu.addItem(modelItem)
 
         menu.addItem(.separator())
-
-        let recentTranscriptions = fetchRecentTranscriptions()
-        let copyLast = NSMenuItem(
-            title: String(localized: "Copy Last Transcription"),
-            action: #selector(copyTranscription(_:)),
-            keyEquivalent: ""
-        )
-        copyLast.target = self
-        copyLast.representedObject = recentTranscriptions.first?.text
-        copyLast.isEnabled = recentTranscriptions.first != nil
-        menu.addItem(copyLast)
-
-        let recentMenu = NSMenu(title: String(localized: "Recent Transcriptions"))
-        if recentTranscriptions.isEmpty {
-            let emptyItem = NSMenuItem(title: String(localized: "No transcriptions yet"), action: nil, keyEquivalent: "")
-            emptyItem.isEnabled = false
-            recentMenu.addItem(emptyItem)
-        } else {
-            for transcription in recentTranscriptions {
-                let item = NSMenuItem(
-                    title: transcription.preview,
-                    action: #selector(copyTranscription(_:)),
-                    keyEquivalent: ""
-                )
-                item.target = self
-                item.representedObject = transcription.text
-                item.toolTip = String(localized: "Copy to Clipboard")
-                recentMenu.addItem(item)
-            }
-        }
-        let recentItem = NSMenuItem(title: String(localized: "Recent Transcriptions"), action: nil, keyEquivalent: "")
-        recentItem.submenu = recentMenu
-        menu.addItem(recentItem)
-
-        menu.addItem(.separator())
         let settings = NSMenuItem(
             title: String(localized: "Settings…"),
             action: #selector(openSettingsFromStatusItem),
@@ -226,37 +179,6 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
-    private func fetchRecentTranscriptions(limit: Int = 6) -> [(preview: String, text: String)] {
-        guard let context = modelContainer?.mainContext else { return [] }
-
-        var descriptor = FetchDescriptor<Transcription>(
-            predicate: #Predicate<Transcription> { transcription in
-                transcription.transcriptionStatus == "completed"
-            },
-            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
-        descriptor.fetchLimit = limit
-
-        guard let transcriptions = try? context.fetch(descriptor) else { return [] }
-        return transcriptions.compactMap { transcription in
-            let text = (transcription.enhancedText?.isEmpty == false)
-                ? transcription.enhancedText ?? transcription.text
-                : transcription.text
-            let normalized = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-            guard !normalized.isEmpty else { return nil }
-            let words = normalized.split(separator: " ")
-            let preview = words.prefix(7).joined(separator: " ") + (words.count > 7 ? "…" : "")
-            return (preview, text)
-        }
-    }
-
-    @objc private func copyTranscription(_ sender: NSMenuItem) {
-        guard let text = sender.representedObject as? String, !text.isEmpty else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-    }
-
     private func updateStatusItem(for state: RecordingState) {
         guard let button = statusItem?.button else { return }
         let symbolName: String
@@ -269,11 +191,11 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
             symbolName = "ellipsis.circle.fill"
             tint = .systemBlue
         case .idle:
-            let image = menuBarImage()
+            let image = NSImage(named: "menuBarIcon")
             image?.isTemplate = true
             image?.size = NSSize(width: 18, height: 18)
             button.image = image
-            button.contentTintColor = nil
+            button.contentTintColor = .labelColor
             button.toolTip = "Local Voice"
             return
         }

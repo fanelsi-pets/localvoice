@@ -78,7 +78,7 @@ final class OnboardingCoordinator: ObservableObject {
         self.storedTranscriptionSetupKind =
             defaults.string(
                 forKey: OnboardingStorageKeys.transcriptionSetupKind
-            ) ?? OnboardingTranscriptionSetupKind.cloud.rawValue
+            ) ?? OnboardingTranscriptionSetupKind.local.rawValue
         self.storedOnboardingTranscriptionProvider =
             defaults.string(
                 forKey: OnboardingStorageKeys.transcriptionProvider

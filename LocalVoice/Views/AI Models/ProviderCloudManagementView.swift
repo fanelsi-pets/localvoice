@@ -33,7 +33,7 @@ struct CloudProviderManagementView: View {
             )
         }
 
-        let preferredOrder = ["Gemini", "OpenAI", "Anthropic"]
+        let preferredOrder = ["Gemini", "OpenAI"]
 
         return descriptors.sorted { first, second in
             let firstIndex = preferredOrder.firstIndex(of: first.displayName) ?? Int.max

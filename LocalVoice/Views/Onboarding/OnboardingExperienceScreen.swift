@@ -15,7 +15,6 @@ struct OnboardingExperienceScreen: View {
     let onAdvance: () -> Void
     let onShortcutChanged: () -> Void
     let onAppear: () -> Void
-    @State private var transcriptPulse = false
 
     var body: some View {
         Group {
@@ -29,26 +28,6 @@ struct OnboardingExperienceScreen: View {
         }
         .animation(.easeInOut(duration: 0.3), value: isInIntroPhase)
         .onAppear(perform: onAppear)
-        .onReceive(NotificationCenter.default.publisher(for: .transcriptionCompleted)) { notification in
-            guard !isInIntroPhase,
-                let transcription = notification.object as? Transcription
-            else { return }
-
-            let result = (transcription.enhancedText?.isEmpty == false)
-                ? transcription.enhancedText ?? transcription.text
-                : transcription.text
-            guard !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
-            withAnimation(.easeOut(duration: 0.22)) {
-                text = result
-                transcriptPulse = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) {
-                    transcriptPulse = false
-                }
-            }
-        }
     }
 
     private var introScreen: some View {
@@ -92,12 +71,6 @@ struct OnboardingExperienceScreen: View {
                 text: $text,
                 onShortcutChanged: onShortcutChanged
             )
-            .scaleEffect(transcriptPulse ? 1.018 : 1)
-            .shadow(
-                color: transcriptPulse ? AppTheme.Accent.primary.opacity(0.24) : .clear,
-                radius: transcriptPulse ? 18 : 0
-            )
-            .animation(.spring(response: 0.4, dampingFraction: 0.72), value: transcriptPulse)
         } bottomBar: {
             OnboardingBottomBar(
                 leadingTitle: "Back",
