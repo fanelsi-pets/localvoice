@@ -5,6 +5,11 @@ import os
 
 @MainActor
 class Recorder: NSObject, ObservableObject {
+    private struct SmoothedValues {
+        var average: Float = 0
+        var peak: Float = 0
+    }
+
     private var recorder: CoreAudioRecorder?
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "Recorder")
     private let deviceManager = AudioDeviceManager.shared
@@ -22,9 +27,7 @@ class Recorder: NSObject, ObservableObject {
     private var audioMuteTask: Task<Void, Never>?
     private var mediaPauseTask: Task<Void, Never>?
     private var audioRestorationTask: Task<Void, Never>?
-    private let smoothedValuesLock = NSLock()
-    private var smoothedAverage: Float = 0
-    private var smoothedPeak: Float = 0
+    private let smoothedValues = OSAllocatedUnfairLock(initialState: SmoothedValues())
 
     /// Audio chunk callback for streaming. Can be updated while recording;
     /// changes are forwarded to the live CoreAudioRecorder.
@@ -184,10 +187,10 @@ class Recorder: NSObject, ObservableObject {
         }
         onAudioChunk = nil
 
-        smoothedValuesLock.lock()
-        smoothedAverage = 0
-        smoothedPeak = 0
-        smoothedValuesLock.unlock()
+        smoothedValues.withLock { values in
+            values.average = 0
+            values.peak = 0
+        }
 
         audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
 
@@ -298,11 +301,11 @@ class Recorder: NSObject, ObservableObject {
         }
 
         // Apply EMA smoothing with thread-safe access
-        smoothedValuesLock.lock()
-        smoothedAverage = smoothedAverage * 0.6 + normalizedAverage * 0.4
-        smoothedPeak = smoothedPeak * 0.6 + normalizedPeak * 0.4
-        let newAudioMeter = AudioMeter(averagePower: Double(smoothedAverage), peakPower: Double(smoothedPeak))
-        smoothedValuesLock.unlock()
+        let newAudioMeter = smoothedValues.withLock { values in
+            values.average = values.average * 0.6 + normalizedAverage * 0.4
+            values.peak = values.peak * 0.6 + normalizedPeak * 0.4
+            return AudioMeter(averagePower: Double(values.average), peakPower: Double(values.peak))
+        }
 
         // Dispatch to main queue for UI updates (more efficient than Task)
         DispatchQueue.main.async { [weak self] in

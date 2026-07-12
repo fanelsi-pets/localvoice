@@ -19,7 +19,7 @@ class CursorPaster {
 
     private static let prePasteDelay: TimeInterval = 0.10
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
-    private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
+    private static let clipboardRestoreDelay: TimeInterval = 0.5
 
     static func pasteAtCursor(_ text: String) {
         Task {
@@ -46,15 +46,14 @@ class CursorPaster {
     @MainActor
     private static func performPasteSession(_ text: String) async -> PasteResult {
         let pasteboard = NSPasteboard.general
-        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
-        let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
+        let savedContents = snapshotClipboard(from: pasteboard)
         let sessionID = UUID().uuidString
 
         guard
             ClipboardManager.setClipboard(
                 text,
-                transient: shouldRestoreClipboard,
-                sessionID: shouldRestoreClipboard ? sessionID : nil
+                transient: true,
+                sessionID: sessionID
             )
         else {
             logger.error("Failed to prepare clipboard for paste")
@@ -64,14 +63,12 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()
-        if shouldRestoreClipboard {
-            scheduleClipboardRestore(
-                savedContents,
-                expectedText: text,
-                sessionID: sessionID,
-                on: pasteboard
-            )
-        }
+        scheduleClipboardRestore(
+            savedContents,
+            expectedText: text,
+            sessionID: sessionID,
+            on: pasteboard
+        )
 
         return pasteResult
     }
@@ -102,13 +99,8 @@ class CursorPaster {
         sessionID: String,
         on pasteboard: NSPasteboard
     ) {
-        let delay = max(
-            UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
-            minimumClipboardRestoreDelay
-        )
-
         Task { @MainActor in
-            await wait(delay)
+            await wait(clipboardRestoreDelay)
             guard pasteboardStillOwnedByPasteSession(pasteboard, expectedText: expectedText, sessionID: sessionID)
             else {
                 return

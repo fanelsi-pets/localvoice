@@ -28,7 +28,8 @@ struct TranscriptionOutputFilter {
 
         // Remove configured filler words. An empty list is naturally a no-op.
         for fillerWord in FillerWordManager.shared.fillerWords {
-            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: fillerWord))\\b[,.]?"
+            let escapedWord = NSRegularExpression.escapedPattern(for: fillerWord)
+            let pattern = "(?<![\\p{L}\\p{N}])\(escapedWord)(?:\\s*[,.;:!?…]+)?(?![\\p{L}\\p{N}])"
             if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                 let range = NSRange(filteredText.startIndex..., in: filteredText)
                 filteredText = regex.stringByReplacingMatches(
@@ -38,6 +39,11 @@ struct TranscriptionOutputFilter {
 
         // Clean whitespace
         filteredText = filteredText.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        filteredText = filteredText.replacingOccurrences(
+            of: #"\s+([,.;:!?…])"#,
+            with: "$1",
+            options: .regularExpression
+        )
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return filteredText

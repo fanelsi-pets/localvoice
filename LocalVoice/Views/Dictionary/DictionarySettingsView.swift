@@ -9,6 +9,7 @@ struct DictionarySettingsView: View {
     enum DictionarySection: String, CaseIterable, Hashable {
         case replacements = "Word Replacements"
         case spellings = "Vocabulary"
+        case fillers = "Filler Words"
 
         var description: String {
             switch self {
@@ -22,6 +23,11 @@ struct DictionarySettingsView: View {
                     localized:
                         "Word Replacements run after transcription to replace misheard words, phrases, abbreviations, or boilerplate text."
                 )
+            case .fillers:
+                return String(
+                    localized:
+                        "Filler words are removed automatically from every completed transcription."
+                )
             }
         }
 
@@ -31,6 +37,8 @@ struct DictionarySettingsView: View {
                 return "character.book.closed"
             case .replacements:
                 return "arrow.left.arrow.right"
+            case .fillers:
+                return "text.badge.minus"
             }
         }
     }
@@ -92,6 +100,8 @@ struct DictionarySettingsView: View {
             VocabularyView()
         case .replacements:
             WordReplacementView()
+        case .fillers:
+            FillerWordsDictionaryView()
         }
     }
 }

@@ -136,3 +136,99 @@ struct FillerWordsSettingsSection: View {
         }
     }
 }
+
+struct FillerWordsDictionaryView: View {
+    @StateObject private var fillerWordManager = FillerWordManager.shared
+    @State private var newWords = ""
+    @State private var errorMessage: String?
+
+    private var sortedWords: [String] {
+        fillerWordManager.fillerWords.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                TextField(
+                    "",
+                    text: $newWords,
+                    prompt: Text("Add filler words, separated by commas")
+                )
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 13))
+                .onSubmit(addWords)
+
+                AddIconButton(
+                    helpText: "Add filler word",
+                    isDisabled: parsedWords.isEmpty,
+                    action: addWords
+                )
+            }
+
+            Text("These words and hesitation sounds are removed from every transcription. Add exact forms such as “э”, “э-э”, “эм” or “м-м”.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.Status.error)
+            }
+
+            if sortedWords.isEmpty {
+                ContentUnavailableView(
+                    "No Filler Words",
+                    systemImage: "text.badge.minus",
+                    description: Text("Add a word or hesitation sound to remove it automatically.")
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            } else {
+                HStack(spacing: 4) {
+                    Text("Filler Words")
+                    Text("(\(sortedWords.count))")
+                        .foregroundStyle(.tertiary)
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+
+                FlowLayout(spacing: 8) {
+                    ForEach(sortedWords, id: \.self) { word in
+                        FillerWordChip(word: word) {
+                            withAnimation(.easeInOut(duration: 0.16)) {
+                                fillerWordManager.removeWord(word)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var parsedWords: [String] {
+        newWords
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func addWords() {
+        let words = parsedWords
+        guard !words.isEmpty else { return }
+
+        var addedCount = 0
+        for word in words where fillerWordManager.addWord(word) {
+            addedCount += 1
+        }
+
+        if addedCount == 0 {
+            errorMessage = String(localized: "These filler words already exist.")
+        } else {
+            newWords = ""
+            errorMessage = nil
+        }
+    }
+}

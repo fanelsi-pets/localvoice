@@ -6,6 +6,7 @@ struct TranscriptionListItem: View {
     let isChecked: Bool
     let onSelect: () -> Void
     let onToggleCheck: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -36,6 +37,14 @@ struct TranscriptionListItem: View {
                             )
                             .foregroundColor(.secondary)
                     }
+
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete Transcription")
                 }
 
                 Text(transcription.enhancedText ?? transcription.text)

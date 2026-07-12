@@ -108,7 +108,7 @@ struct NativeAppleLanguageAssetControl: View {
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 24)
             }
-        case .failed(let message):
+        case .failed:
             Button(action: downloadAsset) {
                 Image(systemName: "arrow.clockwise.circle.fill")
                     .font(.system(size: 14, weight: .semibold))

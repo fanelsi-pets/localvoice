@@ -192,7 +192,7 @@ class AudioDeviceManager: ObservableObject {
     }
 
     func getDeviceName(deviceID: AudioDeviceID) -> String? {
-        let name: CFString? = getDeviceProperty(
+        let name = getDeviceStringProperty(
             deviceID: deviceID,
             selector: kAudioDevicePropertyDeviceNameCFString)
         return name as String?
@@ -470,14 +470,14 @@ class AudioDeviceManager: ObservableObject {
     }
 
     private func getDeviceUID(deviceID: AudioDeviceID) -> String? {
-        let uid: CFString? = getDeviceProperty(
+        let uid = getDeviceStringProperty(
             deviceID: deviceID,
             selector: kAudioDevicePropertyDeviceUID)
         return uid as String?
     }
 
     func getDeviceModelUID(deviceID: AudioDeviceID) -> String? {
-        let uid: CFString? = getDeviceProperty(
+        let uid = getDeviceStringProperty(
             deviceID: deviceID,
             selector: kAudioDevicePropertyModelUID)
         return uid as String?
@@ -559,16 +559,21 @@ class AudioDeviceManager: ObservableObject {
         )
     }
 
-    private func getDeviceProperty<T>(
+    private func getDeviceStringProperty(
         deviceID: AudioDeviceID,
         selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
-    ) -> T? {
+    ) -> CFString? {
         guard deviceID != 0 else { return nil }
 
         var address = createPropertyAddress(selector: selector, scope: scope)
-        var propertySize = UInt32(MemoryLayout<T>.size)
-        var property: T? = nil
+        var propertySize = UInt32(MemoryLayout<CFString?>.size)
+        let propertyPointer = UnsafeMutablePointer<CFString?>.allocate(capacity: 1)
+        propertyPointer.initialize(to: nil)
+        defer {
+            propertyPointer.deinitialize(count: 1)
+            propertyPointer.deallocate()
+        }
 
         let status = AudioObjectGetPropertyData(
             deviceID,
@@ -576,7 +581,7 @@ class AudioDeviceManager: ObservableObject {
             0,
             nil,
             &propertySize,
-            &property
+            propertyPointer
         )
 
         if status != noErr {
@@ -586,7 +591,7 @@ class AudioDeviceManager: ObservableObject {
             return nil
         }
 
-        return property
+        return propertyPointer.pointee
     }
 
     private func notifyDeviceChange() {

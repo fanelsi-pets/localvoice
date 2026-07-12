@@ -47,7 +47,11 @@ final class DictionaryQuickAddManager {
         panel?.orderOut(nil)
         panel = nil
         hostingController = nil
-        previousApp?.activate(options: .activateIgnoringOtherApps)
+        if #available(macOS 14.0, *) {
+            previousApp?.activate()
+        } else {
+            previousApp?.activate(options: .activateIgnoringOtherApps)
+        }
         previousApp = nil
     }
 }
