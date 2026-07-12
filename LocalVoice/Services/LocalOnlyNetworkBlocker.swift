@@ -12,6 +12,11 @@ final class LocalOnlyNetworkBlocker: URLProtocol {
         "github.com",
         "objects.githubusercontent.com",
         "release-assets.githubusercontent.com",
+        "huggingface.co",
+        "cdn-lfs.hf.co",
+        "cdn-lfs-us-1.hf.co",
+        "cas-bridge.xethub.hf.co",
+        "transfer.xethub.hf.co",
     ]
 
     static func install() {
@@ -21,7 +26,14 @@ final class LocalOnlyNetworkBlocker: URLProtocol {
     override class func canInit(with request: URLRequest) -> Bool {
         guard let scheme = request.url?.scheme?.lowercased() else { return false }
         guard blockedSchemes.contains(scheme) else { return false }
-        return !allowedHosts.contains(request.url?.host?.lowercased() ?? "")
+        let host = request.url?.host?.lowercased() ?? ""
+        return !isAllowedHost(host)
+    }
+
+    private static func isAllowedHost(_ host: String) -> Bool {
+        allowedHosts.contains(host)
+            || host.hasSuffix(".huggingface.co")
+            || host.hasSuffix(".hf.co")
     }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

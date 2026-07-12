@@ -1,10 +1,3 @@
-//
-//  LocalVoiceUITestsLaunchTests.swift
-//  LocalVoiceUITests
-//
-//  Created by Prakash Joshi on 15/10/2024.
-//
-
 import XCTest
 
 final class LocalVoiceUITestsLaunchTests: XCTestCase {

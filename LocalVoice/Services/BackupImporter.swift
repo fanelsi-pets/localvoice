@@ -204,12 +204,6 @@ enum BackupImporter {
         if let textFormattingEnabled = general.isTextFormattingEnabled {
             UserDefaults.standard.set(textFormattingEnabled, forKey: keyIsTextFormattingEnabled)
         }
-        if let restoreClipboard = general.restoreClipboardAfterPaste {
-            UserDefaults.standard.set(restoreClipboard, forKey: "restoreClipboardAfterPaste")
-        }
-        if let clipboardDelay = general.clipboardRestoreDelay {
-            UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
-        }
 
         print("Successfully imported general settings.")
     }

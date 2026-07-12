@@ -312,6 +312,15 @@ class WhisperModelManager: ObservableObject {
     private func handleModelDownloadError(_ model: WhisperModel, _ error: Error) {
         self.downloadProgress.removeValue(forKey: model.name + "_main")
         self.downloadProgress.removeValue(forKey: model.name + "_coreml")
+        logger.error("Model download failed for \(model.displayName, privacy: .public): \(error, privacy: .public)")
+        NotificationManager.shared.showNotification(
+            title: String(
+                format: String(localized: "Failed to download model: %@"),
+                error.localizedDescription
+            ),
+            type: .error,
+            duration: 5.0
+        )
     }
 
     func deleteModel(_ model: WhisperModelFile) async {

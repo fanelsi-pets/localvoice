@@ -20,8 +20,6 @@ enum AppDefaults {
             "hasPreparedOnboardingV2": false,
 
             // Clipboard
-            "restoreClipboardAfterPaste": true,
-            "clipboardRestoreDelay": 2.0,
             "useAppleScriptPaste": false,
 
             // Audio & Media
