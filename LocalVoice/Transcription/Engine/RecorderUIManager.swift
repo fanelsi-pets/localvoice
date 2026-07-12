@@ -159,7 +159,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     // MARK: - Recorder Panel Management
 
-    func toggleRecorderPanel(modeId: UUID? = nil) async {
+    func toggleRecorderPanel(modeId: UUID? = nil, isDashboardTest: Bool = false) async {
         guard let engine = engine else { return }
 
         if isRecorderPanelVisible {
@@ -184,7 +184,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         } else {
             SoundManager.shared.playStartSound()
             isRecorderPanelVisible = true
-            await engine.toggleRecord(modeId: modeId)
+            await engine.toggleRecord(
+                modeId: modeId,
+                suppressAutomaticPaste: isDashboardTest
+            )
         }
     }
 

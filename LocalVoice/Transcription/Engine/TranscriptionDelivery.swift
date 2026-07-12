@@ -12,6 +12,7 @@ final class TranscriptionDelivery {
         let responseConfig: EnhancementRuntimeConfiguration?
         let responseError: String?
         let isAssistantFollowUp: Bool
+        let suppressAutomaticPaste: Bool
     }
 
     struct Actions {
@@ -24,6 +25,12 @@ final class TranscriptionDelivery {
 
     func deliver(_ request: Request, actions: Actions) async {
         guard request.transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue else {
+            await actions.dismiss()
+            return
+        }
+
+        if request.suppressAutomaticPaste {
+            SoundManager.shared.playStopSound()
             await actions.dismiss()
             return
         }

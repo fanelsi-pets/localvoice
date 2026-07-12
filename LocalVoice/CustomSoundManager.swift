@@ -374,19 +374,17 @@ class CustomSoundManager: ObservableObject {
             return .failure(.fileNotFound)
         }
 
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
-
-        guard duration.isFinite && duration > 0 else {
-            return .failure(.invalidAudioFile)
-        }
-
-        if duration > maxSoundDuration {
-            return .failure(.durationTooLong(duration: duration, maxDuration: maxSoundDuration))
-        }
-
         do {
-            _ = try AVAudioPlayer(contentsOf: url)
+            let player = try AVAudioPlayer(contentsOf: url)
+            let duration = player.duration
+
+            guard duration.isFinite && duration > 0 else {
+                return .failure(.invalidAudioFile)
+            }
+
+            if duration > maxSoundDuration {
+                return .failure(.durationTooLong(duration: duration, maxDuration: maxSoundDuration))
+            }
         } catch {
             return .failure(.invalidAudioFile)
         }

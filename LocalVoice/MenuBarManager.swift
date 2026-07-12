@@ -349,11 +349,7 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
             }
         }
 
-        if Thread.isMainThread {
-            applyPolicy()
-        } else {
-            DispatchQueue.main.async(execute: applyPolicy)
-        }
+        applyPolicy()
     }
 
     func activateForPresentedWindow() {
@@ -369,11 +365,7 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
             AppPresentationPolicy.activateForUserFacingWindow(reason: reason)
         }
 
-        if Thread.isMainThread {
-            activate()
-        } else {
-            DispatchQueue.main.async(execute: activate)
-        }
+        activate()
     }
 
     func openHistoryWindow() {
@@ -398,10 +390,6 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
             )
         }
 
-        if Thread.isMainThread {
-            openWindow()
-        } else {
-            DispatchQueue.main.async(execute: openWindow)
-        }
+        openWindow()
     }
 }

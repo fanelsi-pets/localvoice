@@ -27,7 +27,7 @@ struct HistorySettingsPanel: View {
                     Picker("Keep Transcriptions", selection: transcriptionRetentionBinding) {
                         Text("1 day").tag(24 * 60)
                         Text("7 days").tag(7 * 24 * 60)
-                        Text("1 month").tag(30 * 24 * 60)
+                        Text("30 days").tag(30 * 24 * 60)
                         Text("Always").tag(-1)
                     }
 
@@ -49,32 +49,27 @@ struct HistorySettingsPanel: View {
                     )
                 }
 
-                if !isTranscriptionCleanupEnabled {
-                    Section {
-                        Toggle("Auto-delete Audio Files", isOn: $isAudioCleanupEnabled)
-
-                        if isAudioCleanupEnabled {
-                            Picker("Keep Audio For", selection: $audioRetentionPeriod) {
-                                Text("1 day").tag(1)
-                                Text("3 days").tag(3)
-                                Text("7 days").tag(7)
-                                Text("14 days").tag(14)
-                                Text("30 days").tag(30)
-                            }
-
-                            Button {
-                                analyzeAudioCleanup()
-                            } label: {
-                                Text(isPerformingAudioCleanup ? "Analyzing..." : "Run Cleanup Now")
-                            }
-                            .disabled(isPerformingAudioCleanup)
-                        }
-                    } header: {
-                        sectionHeader(
-                            "Audio Files",
-                            tip: "Delete old recordings while keeping transcript history."
-                        )
+                Section {
+                    Picker("Keep Audio Recordings", selection: audioRetentionBinding) {
+                        Text("1 day").tag(1)
+                        Text("7 days").tag(7)
+                        Text("30 days").tag(30)
+                        Text("Always").tag(-1)
                     }
+
+                    if isAudioCleanupEnabled {
+                        Button {
+                            analyzeAudioCleanup()
+                        } label: {
+                            Text(isPerformingAudioCleanup ? "Analyzing..." : "Run Cleanup Now")
+                        }
+                        .disabled(isPerformingAudioCleanup)
+                    }
+                } header: {
+                    sectionHeader(
+                        "Audio Recordings",
+                        tip: "Delete old recordings while keeping transcript history."
+                    )
                 }
             }
             .formStyle(.grouped)
@@ -118,22 +113,11 @@ struct HistorySettingsPanel: View {
             }
         }
         .onChange(of: isTranscriptionCleanupEnabled) { _, newValue in
-            if newValue {
-                isAudioCleanupEnabled = false
-                AudioCleanupManager.shared.stopAutomaticCleanup()
-            } else if isAudioCleanupEnabled {
+            if !newValue, isAudioCleanupEnabled {
                 AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
             }
         }
         .onChange(of: isAudioCleanupEnabled) { _, newValue in
-            guard !isTranscriptionCleanupEnabled else {
-                if newValue {
-                    isAudioCleanupEnabled = false
-                }
-                AudioCleanupManager.shared.stopAutomaticCleanup()
-                return
-            }
-
             if newValue {
                 AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
             } else {
@@ -151,6 +135,20 @@ struct HistorySettingsPanel: View {
                 } else {
                     transcriptionRetentionMinutes = value
                     isTranscriptionCleanupEnabled = true
+                }
+            }
+        )
+    }
+
+    private var audioRetentionBinding: Binding<Int> {
+        Binding(
+            get: { isAudioCleanupEnabled ? audioRetentionPeriod : -1 },
+            set: { value in
+                if value < 0 {
+                    isAudioCleanupEnabled = false
+                } else {
+                    audioRetentionPeriod = value
+                    isAudioCleanupEnabled = true
                 }
             }
         )

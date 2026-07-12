@@ -7,13 +7,6 @@ struct TranscriptionOutputFilter {
         #"\{.*?\}"#,  // {}
     ]
 
-    // Standalone hesitation sounds in Russian and Ukrainian. Single "м" and
-    // single Ukrainian "е" are intentionally not removed because they can be
-    // meaningful tokens; repeated or hyphenated forms are safe to classify as
-    // speech disfluencies.
-    private static let cyrillicHesitationPattern =
-        #"(?<![\p{L}\p{N}])(?:э(?:[-‐‑‒–—\s]*э){0,3}|эм+|м(?:[-‐‑‒–—\s]*м){1,4}|е(?:[-‐‑‒–—\s]+е){1,3}|гм+)(?:\s*[,.;:!?…]+)?(?![\p{L}\p{N}])"#
-
     static func filter(_ text: String) -> String {
         var filteredText = text
 
@@ -31,15 +24,6 @@ struct TranscriptionOutputFilter {
                 filteredText = regex.stringByReplacingMatches(
                     in: filteredText, options: [], range: range, withTemplate: "")
             }
-        }
-
-        if let regex = try? NSRegularExpression(
-            pattern: cyrillicHesitationPattern,
-            options: [.caseInsensitive]
-        ) {
-            let range = NSRange(filteredText.startIndex..., in: filteredText)
-            filteredText = regex.stringByReplacingMatches(
-                in: filteredText, options: [], range: range, withTemplate: "")
         }
 
         // Remove configured filler words. An empty list is naturally a no-op.

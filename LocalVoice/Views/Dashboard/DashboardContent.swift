@@ -6,6 +6,8 @@ struct DashboardContent: View {
     @EnvironmentObject private var recorderUIManager: RecorderUIManager
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var latestTranscript = ""
+    @State private var testError: String?
+    @State private var isDashboardTestActive = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -16,9 +18,22 @@ struct DashboardContent: View {
                         modelName: engine.transcriptionModelManager.currentTranscriptionModel?.displayName
                             ?? String(localized: "Choose a model"),
                         latestTranscript: latestTranscript,
-                        onToggleRecording: recorderUIManager.handleToggleRecorderPanelNotification,
+                        testError: testError,
+                        onToggleRecording: {
+                            if engine.recordingState == .idle {
+                                latestTranscript = ""
+                                testError = nil
+                                isDashboardTestActive = true
+                            }
+                            Task { @MainActor in
+                                await recorderUIManager.toggleRecorderPanel(isDashboardTest: true)
+                            }
+                        },
                         onCopyTranscript: {
-                            _ = ClipboardManager.copyToClipboard(latestTranscript)
+                            guard ClipboardManager.copyToClipboard(latestTranscript) else {
+                                return false
+                            }
+                            return ClipboardManager.getClipboardContent() == latestTranscript
                         }
                     )
 
@@ -37,11 +52,20 @@ struct DashboardContent: View {
             refreshAccessibilityStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: .transcriptionCompleted)) { notification in
+            guard isDashboardTestActive else { return }
             guard let transcription = notification.object as? Transcription else { return }
+            isDashboardTestActive = false
+
+            guard transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue else {
+                latestTranscript = ""
+                testError = transcription.text
+                return
+            }
             let result = (transcription.enhancedText?.isEmpty == false)
                 ? transcription.enhancedText ?? transcription.text
                 : transcription.text
             withAnimation(.spring(response: 0.48, dampingFraction: 0.8)) {
+                testError = nil
                 latestTranscript = result
             }
         }
@@ -63,9 +87,17 @@ private struct LocalVoiceHomeFlow: View {
     let state: RecordingState
     let modelName: String
     let latestTranscript: String
+    let testError: String?
     let onToggleRecording: () -> Void
-    let onCopyTranscript: () -> Void
+    let onCopyTranscript: () -> Bool
     @State private var isPulsing = false
+    @State private var copyState: CopyState = .idle
+
+    private enum CopyState {
+        case idle
+        case copied
+        case failed
+    }
 
     private var isActive: Bool { state != .idle }
 
@@ -83,6 +115,9 @@ private struct LocalVoiceHomeFlow: View {
     private var subtitle: LocalizedStringKey {
         switch state {
         case .idle:
+            if testError != nil {
+                return "The test transcription failed. Try again."
+            }
             return latestTranscript.isEmpty
                 ? "Dictate a short phrase to make sure everything works."
                 : "Your test transcription is ready to copy."
@@ -158,18 +193,43 @@ private struct LocalVoiceHomeFlow: View {
             }
 
             if !latestTranscript.isEmpty {
-                HStack(spacing: 12) {
-                    Label("Dictation works", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AppTheme.Accent.primary)
-                    Spacer()
-                    Button("Copy to Clipboard", systemImage: "doc.on.doc", action: onCopyTranscript)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Label("Dictation works", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.Accent.primary)
+                        Spacer()
+                        Button {
+                            copyState = onCopyTranscript() ? .copied : .failed
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .seconds(2))
+                                copyState = .idle
+                            }
+                        } label: {
+                            Label(copyButtonTitle, systemImage: copyButtonIcon)
+                        }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                        .tint(copyState == .failed ? AppTheme.Status.error : AppTheme.Accent.primary)
+                    }
+
+                    Text(latestTranscript)
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(16)
                 .background(AppTheme.Accent.fill, in: RoundedRectangle(cornerRadius: 14))
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            if let testError {
+                Label(testError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(AppTheme.Status.error)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(AppTheme.Status.error.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
             }
 
             Divider()
@@ -196,6 +256,22 @@ private struct LocalVoiceHomeFlow: View {
         switch state {
         case .recording, .starting: return .red
         case .idle, .transcribing, .enhancing, .busy: return AppTheme.Accent.primary
+        }
+    }
+
+    private var copyButtonTitle: LocalizedStringKey {
+        switch copyState {
+        case .idle: return "Copy to Clipboard"
+        case .copied: return "Copied"
+        case .failed: return "Copy failed"
+        }
+    }
+
+    private var copyButtonIcon: String {
+        switch copyState {
+        case .idle: return "doc.on.doc"
+        case .copied: return "checkmark"
+        case .failed: return "exclamationmark.triangle"
         }
     }
 

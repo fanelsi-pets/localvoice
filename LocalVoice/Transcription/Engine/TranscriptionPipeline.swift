@@ -62,6 +62,7 @@ class TranscriptionPipeline {
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
         onDismiss: @escaping () async -> Void,
+        suppressAutomaticPaste: Bool = false,
         assistant: AssistantHooks = .inactive
     ) async {
         let model = transcriptionConfiguration.model
@@ -279,7 +280,8 @@ class TranscriptionPipeline {
                 output: outputForDelivery ?? outputConfiguration(),
                 responseConfig: responseConfig,
                 responseError: responseError,
-                isAssistantFollowUp: assistant.isFollowUp
+                isAssistantFollowUp: assistant.isFollowUp,
+                suppressAutomaticPaste: suppressAutomaticPaste
             ),
             actions: TranscriptionDelivery.Actions(
                 setState: onStateChange,

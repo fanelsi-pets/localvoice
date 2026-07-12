@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import SwiftData
 
+@MainActor
 class TranscriptionAutoCleanupService {
     static let shared = TranscriptionAutoCleanupService()
 
@@ -27,7 +28,7 @@ class TranscriptionAutoCleanupService {
         )
 
         if UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) {
-            Task { [weak self] in
+            Task { @MainActor [weak self] in
                 guard let self = self, let modelContext = self.modelContext else { return }
                 await self.sweepOldTranscriptions(modelContext: modelContext)
                 await self.cleanupOrphanAudioFiles(modelContext: modelContext)
@@ -50,7 +51,7 @@ class TranscriptionAutoCleanupService {
         let minutes = UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes)
         if minutes > 0 {
             if let modelContext = self.modelContext {
-                Task { [weak self] in
+                Task { @MainActor [weak self] in
                     guard let self = self else { return }
                     await self.sweepOldTranscriptions(modelContext: modelContext)
                 }
@@ -95,7 +96,7 @@ class TranscriptionAutoCleanupService {
 
         let cutoffDate = Date().addingTimeInterval(TimeInterval(-effectiveMinutes * 60))
 
-        let modelContainer = await MainActor.run { modelContext.container }
+        let modelContainer = modelContext.container
 
         do {
             let backgroundContext = ModelContext(modelContainer)
@@ -120,9 +121,7 @@ class TranscriptionAutoCleanupService {
             if deletedCount > 0 {
                 try backgroundContext.save()
                 logger.notice("Cleaned up \(deletedCount, privacy: .public) old transcription(s)")
-                await MainActor.run {
-                    NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                }
+                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
             }
         } catch {
             logger.error("Failed during transcription cleanup: \(error, privacy: .public)")
@@ -135,7 +134,7 @@ class TranscriptionAutoCleanupService {
             return
         }
 
-        let modelContainer = await MainActor.run { modelContext.container }
+        let modelContainer = modelContext.container
 
         do {
             let backgroundContext = ModelContext(modelContainer)

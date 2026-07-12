@@ -102,6 +102,8 @@ class LocalVoiceEngine: NSObject, ObservableObject {
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
     private var activeRecordingUseCase: RecordingUseCase = .newSession
     private var activePipelineUseCase: RecordingUseCase = .newSession
+    private var activeRecordingSuppressesPaste = false
+    private var activePipelineSuppressesPaste = false
     private var activeRecordingContextStore: RecordingContextSnapshotStore?
     private var activeRecordingContextTasks: [Task<Void, Never>] = []
 
@@ -178,7 +180,11 @@ class LocalVoiceEngine: NSObject, ObservableObject {
 
     // MARK: - Toggle Record
 
-    func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
+    func toggleRecord(
+        modeId: UUID? = nil,
+        isAssistantFollowUp: Bool = false,
+        suppressAutomaticPaste: Bool = false
+    ) async {
         if recordingState == .starting {
             await cancelRecording()
             return
@@ -186,7 +192,9 @@ class LocalVoiceEngine: NSObject, ObservableObject {
 
         if recordingState == .recording {
             activePipelineUseCase = activeRecordingUseCase
+            activePipelineSuppressesPaste = activeRecordingSuppressesPaste
             activeRecordingUseCase = .newSession
+            activeRecordingSuppressesPaste = false
             activeRecordingStartID = nil
             partialTranscript = ""
             recordingState = .transcribing
@@ -228,6 +236,7 @@ class LocalVoiceEngine: NSObject, ObservableObject {
             shouldCancelRecording = false
             partialTranscript = ""
             activeRecordingUseCase = recordingUseCase
+            activeRecordingSuppressesPaste = suppressAutomaticPaste
             clearActiveRecordingContext()
 
             if !recordingUseCase.isAssistantFollowUp {
@@ -488,6 +497,7 @@ class LocalVoiceEngine: NSObject, ObservableObject {
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                 await self.recorderUIManager?.dismissRecorderPanel()
             },
+            suppressAutomaticPaste: activePipelineSuppressesPaste,
             assistant: TranscriptionPipeline.AssistantHooks(
                 isFollowUp: activePipelineUseCase.isAssistantFollowUp,
                 sendFollowUp: { [weak self] text, transcription in
@@ -523,6 +533,7 @@ class LocalVoiceEngine: NSObject, ObservableObject {
             activePipelineTranscriptionID = nil
             currentSession = nil
             currentSessionTranscriptionConfiguration = nil
+            activePipelineSuppressesPaste = false
             recordedFile = nil
             shouldCancelRecording = false
             activePipelineUseCase = .newSession

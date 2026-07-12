@@ -90,51 +90,22 @@ class WhisperModelManager: ObservableObject {
         }
     }
 
-    /// Copies models shipped inside the signed app into the writable local
-    /// model directory. No network request is needed on first launch.
-    func installBundledModelsIfNeeded() {
-        guard let resourcesURL = Bundle.main.resourceURL else { return }
-        let nestedModelsURL = resourcesURL.appendingPathComponent("models", isDirectory: true)
-        let bundledModelsURL = FileManager.default.fileExists(atPath: nestedModelsURL.path)
-            ? nestedModelsURL
-            : resourcesURL
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: bundledModelsURL, includingPropertiesForKeys: nil)
-        else { return }
-
-        for sourceURL in files
-        where sourceURL.pathExtension == "bin"
-            && sourceURL.lastPathComponent.hasPrefix("ggml-")
-            && !sourceURL.lastPathComponent.hasPrefix("ggml-silero-")
-        {
-            let destinationURL = modelsDirectory.appendingPathComponent(sourceURL.lastPathComponent)
-            do {
-                if FileManager.default.fileExists(atPath: destinationURL.path) {
-                    let sourceSize = try sourceURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                    let destinationSize = try destinationURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-
-                    // Repair clones made without Git LFS: those contain a tiny
-                    // pointer text file instead of the bundled Whisper model.
-                    guard sourceSize > 10_000_000, destinationSize < 1_000_000 else {
-                        continue
-                    }
-                    try FileManager.default.removeItem(at: destinationURL)
-                }
-                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
-            } catch {
-                logError("Error installing bundled model", error)
-            }
-        }
-    }
-
     func loadAvailableModels() {
         do {
             let fileURLs = try FileManager.default.contentsOfDirectory(
-                at: modelsDirectory, includingPropertiesForKeys: nil)
+                at: modelsDirectory, includingPropertiesForKeys: [.fileSizeKey])
             availableModels = fileURLs.compactMap { url in
                 guard url.pathExtension == "bin",
                     !url.lastPathComponent.hasPrefix("ggml-silero-")
                 else { return nil }
+
+                let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                guard fileSize > 10_000_000 else {
+                    // Git LFS pointer files and incomplete downloads must never
+                    // make a model look installed in the UI.
+                    try? FileManager.default.removeItem(at: url)
+                    return nil
+                }
                 return WhisperModelFile(name: url.deletingPathExtension().lastPathComponent, url: url)
             }
         } catch {
@@ -223,14 +194,14 @@ class WhisperModelManager: ObservableObject {
             }
 
             Task {
-                await withTaskCancellationHandler {
+                await withTaskCancellationHandler(operation: {
+                    await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
+                }, onCancel: {
                     observation.invalidate()
                     if finished.exchange(true, ordering: .acquiring) == false {
                         continuation.resume(throwing: CancellationError())
                     }
-                } operation: {
-                    await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
-                }
+                })
             }
         }
     }
@@ -405,7 +376,7 @@ class WhisperModelManager: ObservableObject {
         let destinationURL = modelsDirectory.appendingPathComponent("\(baseName).bin")
 
         if FileManager.default.fileExists(atPath: destinationURL.path) {
-            await NotificationManager.shared.showNotification(
+            NotificationManager.shared.showNotification(
                 title: String(format: String(localized: "A model named %@.bin already exists"), baseName),
                 type: .warning,
                 duration: 4.0
@@ -422,14 +393,14 @@ class WhisperModelManager: ObservableObject {
 
             onModelsChanged?()
 
-            await NotificationManager.shared.showNotification(
+            NotificationManager.shared.showNotification(
                 title: String(format: String(localized: "Imported %@"), destinationURL.lastPathComponent),
                 type: .success,
                 duration: 3.0
             )
         } catch {
             logError("Failed to import local model", error)
-            await NotificationManager.shared.showNotification(
+            NotificationManager.shared.showNotification(
                 title: String(format: String(localized: "Failed to import model: %@"), error.localizedDescription),
                 type: .error,
                 duration: 5.0

@@ -392,6 +392,17 @@ final class RecordingShortcutModeHandler {
             return
         }
 
+        // A second toggle press while recording must always stop the session.
+        // Do this before the debounce/gesture bookkeeping so a missed key-up or
+        // a quick repeat cannot leave the recorder panel stuck on screen.
+        if mode == .toggle, isRecorderVisible(), recordingState() == .recording {
+            isShortcutPressed = true
+            activeRecordingShortcutAction = action
+            isHandsFreeRecording = false
+            await toggleRecorderPanel(modeId)
+            return
+        }
+
         if let lastTrigger = lastShortcutPressTime,
             Date().timeIntervalSince(lastTrigger) < shortcutPressCooldown
         {

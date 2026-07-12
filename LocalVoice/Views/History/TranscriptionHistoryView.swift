@@ -152,7 +152,7 @@ struct TranscriptionHistoryView: View {
         }
         .onChange(of: searchText) { _, _ in
             Task {
-                await resetPagination()
+                resetPagination()
                 await loadInitialContent()
             }
         }
@@ -160,7 +160,7 @@ struct TranscriptionHistoryView: View {
             guard isViewCurrentlyVisible else { return }
             if newId != oldId {
                 Task {
-                    await resetPagination()
+                    resetPagination()
                     await loadInitialContent()
                 }
             }
@@ -228,7 +228,8 @@ struct TranscriptionHistoryView: View {
                                     isSelected: selectedTranscription == transcription,
                                     isChecked: selectedTranscriptions.contains(transcription),
                                     onSelect: { selectedTranscription = transcription },
-                                    onToggleCheck: { toggleSelection(transcription) }
+                                    onToggleCheck: { toggleSelection(transcription) },
+                                    onDelete: { requestDeletion(of: transcription) }
                                 )
                             }
 
@@ -478,6 +479,11 @@ struct TranscriptionHistoryView: View {
         Task {
             await saveAndReload()
         }
+    }
+
+    private func requestDeletion(of transcription: Transcription) {
+        selectedTranscriptions = [transcription]
+        showDeleteConfirmation = true
     }
 
     private func toggleSelection(_ transcription: Transcription) {
