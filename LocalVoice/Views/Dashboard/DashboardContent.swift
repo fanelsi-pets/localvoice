@@ -16,7 +16,10 @@ struct DashboardContent: View {
                         modelName: engine.transcriptionModelManager.currentTranscriptionModel?.displayName
                             ?? String(localized: "Choose a model"),
                         latestTranscript: latestTranscript,
-                        onToggleRecording: recorderUIManager.handleToggleRecorderPanelNotification
+                        onToggleRecording: recorderUIManager.handleToggleRecorderPanelNotification,
+                        onCopyTranscript: {
+                            _ = ClipboardManager.copyToClipboard(latestTranscript)
+                        }
                     )
 
                     if !isAccessibilityEnabled {
@@ -61,6 +64,7 @@ private struct LocalVoiceHomeFlow: View {
     let modelName: String
     let latestTranscript: String
     let onToggleRecording: () -> Void
+    let onCopyTranscript: () -> Void
     @State private var isPulsing = false
 
     private var isActive: Bool { state != .idle }
@@ -81,7 +85,7 @@ private struct LocalVoiceHomeFlow: View {
         case .idle:
             return latestTranscript.isEmpty
                 ? "Dictate a short phrase to make sure everything works."
-                : "Your latest transcription is shown below."
+                : "Your test transcription is ready to copy."
         case .starting: return "Local Voice is getting ready."
         case .recording: return "Speak naturally. Press the shortcut again when finished."
         case .transcribing: return "Your recording stays in the selected transcription flow."
@@ -154,14 +158,14 @@ private struct LocalVoiceHomeFlow: View {
             }
 
             if !latestTranscript.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("What we heard", systemImage: "quote.bubble.fill")
+                HStack(spacing: 12) {
+                    Label("Dictation works", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.Accent.primary)
-                    Text(latestTranscript)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Spacer()
+                    Button("Copy to Clipboard", systemImage: "doc.on.doc", action: onCopyTranscript)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                 }
                 .padding(16)
                 .background(AppTheme.Accent.fill, in: RoundedRectangle(cornerRadius: 14))

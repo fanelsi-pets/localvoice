@@ -12157,6 +12157,16 @@
           }
         }
       }
+    },
+    "Your test transcription is ready to copy.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тестова транскрипція готова до копіювання."
+          }
+        }
+      }
     }
   },
   "version": "1.1"
