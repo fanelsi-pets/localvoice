@@ -253,23 +253,6 @@ final class OnboardingFlowController {
         }
     }
 
-    func downloadTranscriptionModel(
-        _ model: FluidAudioModel,
-        modelManager: FluidAudioModelManager
-    ) {
-        guard coordinator.requiredPermissionsGranted,
-            coordinator.hasSelectedOnboardingMicrophone,
-            !modelManager.isFluidAudioModelDownloaded(model),
-            !modelManager.isFluidAudioModelDownloading(model)
-        else {
-            return
-        }
-
-        Task {
-            await modelManager.downloadFluidAudioModel(model)
-        }
-    }
-
     func moveToExperienceStep(
         _ index: Int,
         enhancementService: AIEnhancementService

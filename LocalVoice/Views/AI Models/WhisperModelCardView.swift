@@ -8,10 +8,12 @@ struct WhisperModelCardView: View {
     let downloadProgress: [String: Double]
     let modelURL: URL?
     let isWarming: Bool
+    let isSelected: Bool
 
     // Actions
     var deleteAction: () -> Void
     var downloadAction: () -> Void
+    var selectAction: (() -> Void)?
     private var isDownloading: Bool {
         downloadProgress.keys.contains(model.name + "_main") || downloadProgress.keys.contains(model.name + "_coreml")
     }
@@ -107,7 +109,15 @@ struct WhisperModelCardView: View {
     private var actionSection: some View {
         HStack(spacing: 8) {
             if isDownloaded {
-                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
+                if isSelected {
+                    modelStatusPill("Selected", systemImage: "checkmark.circle.fill")
+                } else if let selectAction {
+                    Button("Use", action: selectAction)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                } else {
+                    modelStatusPill("Downloaded", systemImage: "checkmark.circle")
+                }
             } else {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {

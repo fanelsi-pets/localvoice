@@ -3,7 +3,6 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboardingV2: Bool
-    @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject var aiService: AIService
     @EnvironmentObject var enhancementService: AIEnhancementService
@@ -13,12 +12,7 @@ struct OnboardingView: View {
     let contentMaxWidth: CGFloat = 560
 
     var body: some View {
-        let isTranscriptionModelDownloaded = coordinator.isTranscriptionModelDownloaded(
-            using: fluidAudioModelManager
-        )
-        let isTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
-            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
-        )
+        let isTranscriptionSetupReady = coordinator.isTranscriptionSetupReady()
 
         ZStack(alignment: .bottomLeading) {
             OnboardingBackground()
@@ -54,25 +48,11 @@ struct OnboardingView: View {
                 case .model:
                     OnboardingModelScreen(
                         contentMaxWidth: contentMaxWidth,
-                        localModel: coordinator.requiredTranscriptionModel,
                         setupKind: coordinator.transcriptionSetupKind,
                         providerOptions: coordinator.onboardingTranscriptionProviderOptions,
                         selectedProviderKey: coordinator.selectedOnboardingTranscriptionProviderKeyBinding(),
-                        isLocalDownloaded: isTranscriptionModelDownloaded,
-                        isLocalDownloading: coordinator.requiredTranscriptionModel.map {
-                            fluidAudioModelManager.isFluidAudioModelDownloading($0)
-                        } ?? false,
-                        localDownloadStatus: coordinator.requiredTranscriptionModel.flatMap {
-                            fluidAudioModelManager.downloadStatus(for: $0)
-                        },
                         isSetupReady: isTranscriptionSetupReady,
                         onSelectSetupKind: coordinator.flow.selectOnboardingTranscriptionSetup,
-                        onDownload: {
-                            coordinator.flow.downloadTranscriptionModel(
-                                $0,
-                                modelManager: fluidAudioModelManager
-                            )
-                        },
                         onVerificationChanged: coordinator.flow.refreshTranscriptionSetupVerification,
                         onBack: coordinator.flow.goToMicrophoneStep,
                         onContinue: {
@@ -215,9 +195,7 @@ struct OnboardingView: View {
             coordinator.permissions.refreshPermissionStatuses()
             coordinator.flow.refreshAPIVerification()
             coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
-            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
-                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
-            )
+            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady()
             coordinator.flow.reconcileStage(
                 isTranscriptionSetupReady: refreshedTranscriptionSetupReady,
                 enhancementService: enhancementService
@@ -229,9 +207,7 @@ struct OnboardingView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             coordinator.permissions.refreshPermissionStatuses()
             coordinator.flow.refreshTranscriptionSetupVerification()
-            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
-                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
-            )
+            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady()
             coordinator.flow.reconcileStage(
                 isTranscriptionSetupReady: refreshedTranscriptionSetupReady,
                 enhancementService: enhancementService

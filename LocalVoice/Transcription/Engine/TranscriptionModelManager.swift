@@ -55,6 +55,15 @@ class TranscriptionModelManager: ObservableObject {
         }
     }
 
+    /// Models shown in every user-facing local download catalog.
+    var downloadableLocalModels: [any TranscriptionModel] {
+        allAvailableModels.filter { model in
+            model.provider == .whisper
+                && !model.name.hasPrefix("ggml-silero-")
+                && isAvailableOnCurrentOS(model)
+        }
+    }
+
     func isAvailableOnCurrentOS(_ model: any TranscriptionModel) -> Bool {
         switch model.provider {
         case .nativeApple:

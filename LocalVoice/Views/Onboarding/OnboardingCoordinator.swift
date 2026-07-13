@@ -351,12 +351,6 @@ final class OnboardingCoordinator: ObservableObject {
         return onboardingProviderOptions.first ?? .groq
     }
 
-    var requiredTranscriptionModel: FluidAudioModel? {
-        TranscriptionModelRegistry.models
-            .compactMap { $0 as? FluidAudioModel }
-            .first { $0.name == "parakeet-tdt-0.6b-v3" }
-    }
-
     func selectedOnboardingTranscriptionProviderKeyBinding() -> Binding<String> {
         Binding(
             get: { [weak self] in
@@ -383,12 +377,7 @@ final class OnboardingCoordinator: ObservableObject {
         )
     }
 
-    func isTranscriptionModelDownloaded(using modelManager: FluidAudioModelManager) -> Bool {
-        guard let requiredTranscriptionModel else { return false }
-        return modelManager.isFluidAudioModelDownloaded(requiredTranscriptionModel)
-    }
-
-    func isTranscriptionSetupReady(isTranscriptionModelDownloaded: Bool) -> Bool {
+    func isTranscriptionSetupReady() -> Bool {
         switch transcriptionSetupKind {
         case .local:
             return true
