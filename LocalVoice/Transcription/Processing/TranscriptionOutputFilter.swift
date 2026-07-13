@@ -27,9 +27,14 @@ struct TranscriptionOutputFilter {
         }
 
         // Remove configured filler words. An empty list is naturally a no-op.
-        for fillerWord in FillerWordManager.shared.fillerWords {
+        // Match longer phrases first so a short entry such as "э" does not
+        // leave a dangling hyphen after removing "э-э".
+        let fillerWords = FillerWordManager.shared.fillerWords.sorted {
+            $0.count > $1.count
+        }
+        for fillerWord in fillerWords {
             let escapedWord = NSRegularExpression.escapedPattern(for: fillerWord)
-            let pattern = "(?<![\\p{L}\\p{N}])\(escapedWord)(?:\\s*[,.;:!?…]+)?(?![\\p{L}\\p{N}])"
+            let pattern = "(?<![\\p{L}\\p{N}])\(escapedWord)(?:\\s*[,.;:!?…—–-]+)?(?![\\p{L}\\p{N}])"
             if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                 let range = NSRange(filteredText.startIndex..., in: filteredText)
                 filteredText = regex.stringByReplacingMatches(

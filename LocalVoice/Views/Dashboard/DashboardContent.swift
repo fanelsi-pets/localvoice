@@ -100,6 +100,27 @@ private struct LocalVoiceHomeFlow: View {
     }
 
     private var isActive: Bool { state != .idle }
+    private var hasTranscript: Bool { !latestTranscript.isEmpty }
+    private var canToggleRecording: Bool { state == .idle || state == .recording }
+
+    private var recordingButtonTitle: LocalizedStringKey {
+        switch state {
+        case .idle: return "Start dictation"
+        case .starting: return "Preparing microphone…"
+        case .recording: return "Stop recording"
+        case .transcribing: return "Creating transcript…"
+        case .enhancing: return "Improving the text…"
+        case .busy: return "Finishing…"
+        }
+    }
+
+    private var recordingButtonIcon: String {
+        switch state {
+        case .idle: return "mic.fill"
+        case .recording: return "stop.fill"
+        case .starting, .transcribing, .enhancing, .busy: return "hourglass"
+        }
+    }
 
     private var title: LocalizedStringKey {
         switch state {
@@ -167,29 +188,28 @@ private struct LocalVoiceHomeFlow: View {
                 Spacer(minLength: 16)
 
                 Button(action: onToggleRecording) {
-                    Label(
-                        state == .recording ? "Stop recording" : "Start dictation",
-                        systemImage: state == .recording ? "stop.fill" : "mic.fill"
-                    )
+                    Label(recordingButtonTitle, systemImage: recordingButtonIcon)
                     .font(.system(size: 13, weight: .semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(activeColor)
-                .disabled(state == .transcribing || state == .enhancing || state == .busy)
+                .disabled(!canToggleRecording)
             }
 
             HStack(spacing: 10) {
-                flowStep("Record", systemImage: "waveform", isComplete: state != .idle)
-                flowConnector(isActive: state == .transcribing || state == .enhancing || state == .busy)
+                flowStep("Record", systemImage: "waveform", isComplete: state != .idle || hasTranscript)
+                flowConnector(
+                    isActive: state == .transcribing || state == .enhancing || state == .busy || hasTranscript
+                )
                 flowStep(
                     "Transcribe",
                     systemImage: "text.bubble",
-                    isComplete: state == .transcribing || state == .enhancing || state == .busy
+                    isComplete: state == .transcribing || state == .enhancing || state == .busy || hasTranscript
                 )
-                flowConnector(isActive: state == .enhancing || state == .busy)
-                flowStep("Ready", systemImage: "checkmark", isComplete: state == .busy)
+                flowConnector(isActive: state == .enhancing || state == .busy || hasTranscript)
+                flowStep("Ready", systemImage: "checkmark", isComplete: hasTranscript)
             }
 
             if !latestTranscript.isEmpty {

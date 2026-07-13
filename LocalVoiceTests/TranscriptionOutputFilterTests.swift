@@ -16,4 +16,10 @@ struct TranscriptionOutputFilterTests {
         #expect(TranscriptionOutputFilter.filter("схема і метро") == "схема і метро")
         #expect(TranscriptionOutputFilter.filter("м — позначення метра") == "м — позначення метра")
     }
+
+    @Test func cleansSpacingAndPunctuationAfterRemovingHesitations() {
+        #expect(TranscriptionOutputFilter.filter("Ну, э-э... давайте начнём") == "Ну, давайте начнём")
+        #expect(TranscriptionOutputFilter.filter("Um — this, uh, works") == "this, works")
+        #expect(TranscriptionOutputFilter.filter("Е-е... Гаразд!") == "Гаразд!")
+    }
 }

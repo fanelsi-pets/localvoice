@@ -18,6 +18,7 @@ struct OnboardingTranscriptionSetupCard: View {
     @State private var verificationDetailMessage: String?
     @State private var verificationSucceeded = false
     @State private var isSwitchingProvider = false
+    @State private var modelPendingDeletion: WhisperModelFile?
 
     private var selectedProvider: (any CloudProvider)? {
         providerOptions.first {
@@ -66,6 +67,23 @@ struct OnboardingTranscriptionSetupCard: View {
             verificationSucceeded = false
             verificationMessage = nil
             verificationDetailMessage = nil
+        }
+        .alert("Delete Model", isPresented: deleteConfirmationBinding) {
+            Button("Cancel", role: .cancel) {
+                modelPendingDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                deletePendingLocalModel()
+            }
+        } message: {
+            if let modelPendingDeletion {
+                Text(
+                    String(
+                        format: String(localized: "Are you sure you want to delete the model '%@'?"),
+                        modelPendingDeletion.name
+                    )
+                )
+            }
         }
     }
 
@@ -119,7 +137,7 @@ struct OnboardingTranscriptionSetupCard: View {
                         modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
                         isWarming: isWarming,
                         isSelected: transcriptionModelManager.currentTranscriptionModel?.name == model.name,
-                        deleteAction: { deleteLocalModel(model) },
+                        deleteAction: { requestDeleteLocalModel(model) },
                         downloadAction: { downloadLocalModel(model) },
                         selectAction: {
                             transcriptionModelManager.setDefaultTranscriptionModel(model)
@@ -147,10 +165,28 @@ struct OnboardingTranscriptionSetupCard: View {
         }
     }
 
-    private func deleteLocalModel(_ model: any TranscriptionModel) {
+    private var deleteConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { modelPendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    modelPendingDeletion = nil
+                }
+            }
+        )
+    }
+
+    private func requestDeleteLocalModel(_ model: any TranscriptionModel) {
         guard let downloadedModel = whisperModelManager.availableModels.first(where: { $0.name == model.name }) else {
             return
         }
+
+        modelPendingDeletion = downloadedModel
+    }
+
+    private func deletePendingLocalModel() {
+        guard let downloadedModel = modelPendingDeletion else { return }
+        modelPendingDeletion = nil
 
         Task {
             await whisperModelManager.deleteModel(downloadedModel)
