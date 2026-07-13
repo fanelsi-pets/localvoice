@@ -2,7 +2,7 @@ import Foundation
 import Security
 import os
 
-/// Securely stores and retrieves API keys using Keychain with iCloud sync.
+/// Securely stores and retrieves API keys in the local macOS login Keychain.
 /// For local (unsigned) builds, uses UserDefaults instead since Keychain
 /// requires stable code signing to reliably persist data across rebuilds.
 final class KeychainService {
@@ -22,25 +22,25 @@ final class KeychainService {
 
     /// Saves a string value to Keychain.
     @discardableResult
-    func save(_ value: String, forKey key: String, syncable: Bool = true) -> Bool {
+    func save(_ value: String, forKey key: String) -> Bool {
         guard let data = value.data(using: .utf8) else {
             logger.error("Failed to convert value to data for key: \(key, privacy: .public)")
             return false
         }
-        return save(data: data, forKey: key, syncable: syncable)
+        return save(data: data, forKey: key)
     }
 
     /// Saves data to Keychain.
     @discardableResult
-    func save(data: Data, forKey key: String, syncable: Bool = true) -> Bool {
+    func save(data: Data, forKey key: String) -> Bool {
         #if LOCAL_BUILD
             defaults.set(data, forKey: localPrefix + key)
             return true
         #else
             // First, try to delete any existing item to avoid duplicates
-            delete(forKey: key, syncable: syncable)
+            delete(forKey: key)
 
-            var query = baseQuery(forKey: key, syncable: syncable)
+            var query = baseQuery(forKey: key)
             query[kSecValueData as String] = data
 
             let status = SecItemAdd(query as CFDictionary, nil)
@@ -58,19 +58,19 @@ final class KeychainService {
     }
 
     /// Retrieves a string value from Keychain.
-    func getString(forKey key: String, syncable: Bool = true) -> String? {
-        guard let data = getData(forKey: key, syncable: syncable) else {
+    func getString(forKey key: String) -> String? {
+        guard let data = getData(forKey: key) else {
             return nil
         }
         return String(data: data, encoding: .utf8)
     }
 
     /// Retrieves data from Keychain.
-    func getData(forKey key: String, syncable: Bool = true) -> Data? {
+    func getData(forKey key: String) -> Data? {
         #if LOCAL_BUILD
             return defaults.data(forKey: localPrefix + key)
         #else
-            var query = baseQuery(forKey: key, syncable: syncable)
+            var query = baseQuery(forKey: key)
             query[kSecReturnData as String] = kCFBooleanTrue
             query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -91,12 +91,12 @@ final class KeychainService {
 
     /// Deletes an item from Keychain.
     @discardableResult
-    func delete(forKey key: String, syncable: Bool = true) -> Bool {
+    func delete(forKey key: String) -> Bool {
         #if LOCAL_BUILD
             defaults.removeObject(forKey: localPrefix + key)
             return true
         #else
-            let query = baseQuery(forKey: key, syncable: syncable)
+            let query = baseQuery(forKey: key)
             let status = SecItemDelete(query as CFDictionary)
 
             if status == errSecSuccess || status == errSecItemNotFound {
@@ -114,11 +114,11 @@ final class KeychainService {
     }
 
     /// Checks if a key exists in Keychain.
-    func exists(forKey key: String, syncable: Bool = true) -> Bool {
+    func exists(forKey key: String) -> Bool {
         #if LOCAL_BUILD
             return defaults.data(forKey: localPrefix + key) != nil
         #else
-            var query = baseQuery(forKey: key, syncable: syncable)
+            var query = baseQuery(forKey: key)
             query[kSecReturnData as String] = kCFBooleanFalse
 
             let status = SecItemCopyMatching(query as CFDictionary, nil)
@@ -130,19 +130,13 @@ final class KeychainService {
 
     #if !LOCAL_BUILD
         /// Creates base Keychain query dictionary.
-        private func baseQuery(forKey key: String, syncable: Bool) -> [String: Any] {
-            var query: [String: Any] = [
+        private func baseQuery(forKey key: String) -> [String: Any] {
+            [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
                 kSecAttrAccount as String: key,
-                kSecUseDataProtectionKeychain as String: true,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             ]
-
-            if syncable {
-                query[kSecAttrSynchronizable as String] = kCFBooleanTrue
-            }
-
-            return query
         }
     #endif
 }

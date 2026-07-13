@@ -8,7 +8,7 @@ final class APIKeyManager {
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "APIKeyManager")
     private let keychain = KeychainService.shared
 
-    /// Provider to Keychain identifier mapping (iOS compatible for iCloud sync).
+    /// Provider to stable local Keychain identifier mapping.
     private static let providerToKeychainKey: [String: String] = [
         "groq": "groqAPIKey",
         "deepgram": "deepgramAPIKey",
