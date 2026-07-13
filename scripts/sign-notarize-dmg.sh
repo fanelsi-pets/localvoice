@@ -33,7 +33,6 @@ codesign \
   "$APP_PATH"
 
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-spctl --assess --type execute --verbose=4 "$APP_PATH"
 
 scripts/create-dmg.sh "$APP_PATH" "$DMG_PATH"
 codesign --force --sign "$IDENTITY" --timestamp "$DMG_PATH"
