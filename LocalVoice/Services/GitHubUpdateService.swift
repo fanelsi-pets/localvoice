@@ -128,7 +128,6 @@ final class GitHubUpdateService: ObservableObject {
         let candidateURL = volumeURL.appendingPathComponent("LocalVoice.app", isDirectory: true)
         guard
             let candidateBundle = Bundle(url: candidateURL),
-            candidateBundle.bundleIdentifier == installedIdentifier,
             let candidateVersion = candidateBundle.object(
                 forInfoDictionaryKey: "CFBundleShortVersionString"
             ) as? String
@@ -138,7 +137,12 @@ final class GitHubUpdateService: ObservableObject {
             forInfoDictionaryKey: "CFBundleShortVersionString"
         ) as? String ?? "0"
 
-        guard Self.isNewer(candidateVersion, than: installedVersion) else { return }
+        guard Self.shouldQuitForMountedUpdate(
+            candidateIdentifier: candidateBundle.bundleIdentifier,
+            candidateVersion: candidateVersion,
+            installedIdentifier: installedIdentifier,
+            installedVersion: installedVersion
+        ) else { return }
         terminateForUpdate(after: 0.35)
     }
 
@@ -148,7 +152,16 @@ final class GitHubUpdateService: ObservableObject {
         }
     }
 
-    private static func isNewer(_ candidate: String, than installed: String) -> Bool {
+    static func shouldQuitForMountedUpdate(
+        candidateIdentifier: String?,
+        candidateVersion: String,
+        installedIdentifier: String,
+        installedVersion: String
+    ) -> Bool {
+        candidateIdentifier == installedIdentifier && isNewer(candidateVersion, than: installedVersion)
+    }
+
+    static func isNewer(_ candidate: String, than installed: String) -> Bool {
         let lhs = versionComponents(candidate)
         let rhs = versionComponents(installed)
         for index in 0..<max(lhs.count, rhs.count) {
