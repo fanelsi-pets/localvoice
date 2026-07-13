@@ -8,10 +8,12 @@ struct ModelCardView: View {
     let downloadProgress: [String: Double]
     let modelURL: URL?
     let isWarming: Bool
+    var isSelected = false
 
     // Actions
     var deleteAction: () -> Void
     var downloadAction: () -> Void
+    var selectAction: (() -> Void)?
     var editAction: ((CustomCloudModel) -> Void)?
     var body: some View {
         Group {
@@ -24,8 +26,10 @@ struct ModelCardView: View {
                         downloadProgress: downloadProgress,
                         modelURL: modelURL,
                         isWarming: isWarming,
+                        isSelected: isSelected,
                         deleteAction: deleteAction,
-                        downloadAction: downloadAction
+                        downloadAction: downloadAction,
+                        selectAction: selectAction
                     )
                 } else if let importedModel = model as? ImportedWhisperModel {
                     ImportedWhisperModelCardView(
@@ -39,7 +43,9 @@ struct ModelCardView: View {
                 if let fluidAudioModel = model as? FluidAudioModel {
                     FluidAudioModelCardView(
                         model: fluidAudioModel,
-                        fluidAudioModelManager: fluidAudioModelManager
+                        fluidAudioModelManager: fluidAudioModelManager,
+                        isSelected: isSelected,
+                        selectAction: selectAction
                     )
                 }
             case .nativeApple:

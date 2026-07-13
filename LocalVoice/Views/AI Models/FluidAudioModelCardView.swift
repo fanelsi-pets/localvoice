@@ -4,10 +4,19 @@ import SwiftUI
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
     @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
+    let isSelected: Bool
+    let selectAction: (() -> Void)?
 
-    init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager) {
+    init(
+        model: FluidAudioModel,
+        fluidAudioModelManager: FluidAudioModelManager,
+        isSelected: Bool = false,
+        selectAction: (() -> Void)? = nil
+    ) {
         self.model = model
         _fluidAudioModelManager = ObservedObject(wrappedValue: fluidAudioModelManager)
+        self.isSelected = isSelected
+        self.selectAction = selectAction
     }
 
     var isDownloaded: Bool {
@@ -122,7 +131,15 @@ struct FluidAudioModelCardView: View {
     private var actionSection: some View {
         HStack(spacing: 8) {
             if isDownloaded && !isDownloading {
-                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
+                if isSelected {
+                    modelStatusPill("Selected", systemImage: "checkmark.circle.fill")
+                } else if let selectAction {
+                    Button("Use", action: selectAction)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                } else {
+                    modelStatusPill("Downloaded", systemImage: "checkmark.circle")
+                }
             } else {
                 Button(action: {
                     Task {

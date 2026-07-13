@@ -2,18 +2,16 @@ import AppKit
 import SwiftUI
 
 struct OnboardingTranscriptionSetupCard: View {
-    let localModel: FluidAudioModel?
     let setupKind: OnboardingTranscriptionSetupKind
     let providerOptions: [any CloudProvider]
     @Binding var selectedProviderKey: String
-    let isLocalDownloaded: Bool
-    let isLocalDownloading: Bool
-    let localDownloadStatus: FluidAudioDownloadStatus?
     let onSelectSetupKind: (OnboardingTranscriptionSetupKind) -> Void
-    let onDownloadLocalModel: (FluidAudioModel) -> Void
     let onVerificationChanged: () -> Void
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @EnvironmentObject private var whisperModelManager: WhisperModelManager
+    @EnvironmentObject private var fluidAudioModelManager: FluidAudioModelManager
+    @ObservedObject private var warmupCoordinator = WhisperModelWarmupCoordinator.shared
     @State private var apiKey = ""
     @State private var isVerifying = false
     @State private var verificationMessage: String?
@@ -105,35 +103,58 @@ struct OnboardingTranscriptionSetupCard: View {
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
     private var localSetup: some View {
-        if let localModel {
-            TranscriptionModelDownloadCard(
-                model: localModel,
-                isDownloaded: isLocalDownloaded,
-                isDownloading: isLocalDownloading,
-                status: localDownloadStatus,
-                onDownload: { onDownloadLocalModel(localModel) }
-            )
-        } else {
-            missingModelPanel
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(downloadableLocalModels, id: \.id) { model in
+                    let isWarming = (model as? WhisperModel).map {
+                        warmupCoordinator.isWarming(modelNamed: $0.name)
+                    } ?? false
+
+                    ModelCardView(
+                        model: model,
+                        fluidAudioModelManager: fluidAudioModelManager,
+                        isDownloaded: whisperModelManager.availableModels.contains { $0.name == model.name },
+                        downloadProgress: whisperModelManager.downloadProgress,
+                        modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
+                        isWarming: isWarming,
+                        isSelected: transcriptionModelManager.currentTranscriptionModel?.name == model.name,
+                        deleteAction: { deleteLocalModel(model) },
+                        downloadAction: { downloadLocalModel(model) },
+                        selectAction: {
+                            transcriptionModelManager.setDefaultTranscriptionModel(model)
+                        }
+                    )
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .frame(maxHeight: 430)
+    }
+
+    private var downloadableLocalModels: [any TranscriptionModel] {
+        transcriptionModelManager.downloadableLocalModels
+    }
+
+    private func downloadLocalModel(_ model: any TranscriptionModel) {
+        guard let whisperModel = model as? WhisperModel else { return }
+
+        Task {
+            await whisperModelManager.downloadModel(whisperModel)
+            if whisperModelManager.availableModels.contains(where: { $0.name == model.name }) {
+                transcriptionModelManager.setDefaultTranscriptionModel(model)
+            }
         }
     }
 
-    private var missingModelPanel: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(AppTheme.Status.error)
-
-            Text("Parakeet V3 is not available.")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(AppTheme.Text.secondary)
-
-            Spacer(minLength: 0)
+    private func deleteLocalModel(_ model: any TranscriptionModel) {
+        guard let downloadedModel = whisperModelManager.availableModels.first(where: { $0.name == model.name }) else {
+            return
         }
-        .padding(16)
-        .background(AppMaterialCardBackground(cornerRadius: 12))
+
+        Task {
+            await whisperModelManager.deleteModel(downloadedModel)
+        }
     }
 
     private var cloudSetup: some View {

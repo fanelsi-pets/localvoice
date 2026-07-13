@@ -257,6 +257,7 @@ struct ModelManagementView: View {
                     downloadProgress: whisperModelManager.downloadProgress,
                     modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
                     isWarming: isWarming,
+                    isSelected: transcriptionModelManager.currentTranscriptionModel?.name == model.name,
                     deleteAction: {
                         confirmDeleteLocalModel(model)
                     },
@@ -264,6 +265,9 @@ struct ModelManagementView: View {
                         if let whisperModel = model as? WhisperModel {
                             Task { await whisperModelManager.downloadModel(whisperModel) }
                         }
+                    },
+                    selectAction: {
+                        transcriptionModelManager.setDefaultTranscriptionModel(model)
                     }
                 )
             }
@@ -332,11 +336,7 @@ struct ModelManagementView: View {
     }
 
     private var localModels: [any TranscriptionModel] {
-        transcriptionModelManager.allAvailableModels.filter { model in
-            model.provider == .whisper
-                && !model.name.hasPrefix("ggml-silero-")
-                && transcriptionModelManager.isAvailableOnCurrentOS(model)
-        }
+        transcriptionModelManager.downloadableLocalModels
     }
 
     private func confirmDeleteLocalModel(_ model: any TranscriptionModel) {
