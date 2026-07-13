@@ -12,6 +12,19 @@ final class GitHubUpdateService: ObservableObject {
 
     private let repository = "fanelsi-pets/localvoice"
     private var lastCheck: Date?
+    private var workspaceMountObserver: NSObjectProtocol?
+
+    private init() {
+        workspaceMountObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didMountNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            Task { @MainActor in
+                GitHubUpdateService.shared.handleMountedVolume(notification)
+            }
+        }
+    }
 
     struct Release: Decodable {
         let tagName: String
@@ -94,8 +107,44 @@ final class GitHubUpdateService: ObservableObject {
             NSWorkspace.shared.open(release.htmlURL)
             return
         }
-        if !NSWorkspace.shared.open(dmg.downloadURL) {
+
+        isDownloading = true
+        if NSWorkspace.shared.open(dmg.downloadURL) {
+            terminateForUpdate(after: 0.8)
+        } else {
+            isDownloading = false
             NSWorkspace.shared.open(release.htmlURL)
+        }
+    }
+
+    /// Finder cannot replace a running app bundle. If the user mounts a newer
+    /// LocalVoice DMG manually, quit before they drag it into Applications.
+    private func handleMountedVolume(_ notification: Notification) {
+        guard
+            let volumeURL = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL,
+            let installedIdentifier = Bundle.main.bundleIdentifier
+        else { return }
+
+        let candidateURL = volumeURL.appendingPathComponent("LocalVoice.app", isDirectory: true)
+        guard
+            let candidateBundle = Bundle(url: candidateURL),
+            candidateBundle.bundleIdentifier == installedIdentifier,
+            let candidateVersion = candidateBundle.object(
+                forInfoDictionaryKey: "CFBundleShortVersionString"
+            ) as? String
+        else { return }
+
+        let installedVersion = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "0"
+
+        guard Self.isNewer(candidateVersion, than: installedVersion) else { return }
+        terminateForUpdate(after: 0.35)
+    }
+
+    private func terminateForUpdate(after delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            NSApplication.shared.terminate(nil)
         }
     }
 
