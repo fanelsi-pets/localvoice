@@ -502,12 +502,6 @@ struct ModeConfigFormView: View {
                 }
             }
 
-            Toggle(isOn: $draft.useScreenCapture) {
-                HStack(spacing: 4) {
-                    Text("Screen")
-                    InfoTip("Use captured on-screen text as context for this mode.")
-                }
-            }
         }
     }
 

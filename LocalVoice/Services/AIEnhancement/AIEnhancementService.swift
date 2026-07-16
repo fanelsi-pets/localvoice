@@ -22,7 +22,6 @@ class AIEnhancementService: ObservableObject {
     }
 
     private let aiService: AIService
-    private let screenCaptureService: ScreenCaptureService
     private let customVocabularyService: CustomVocabularyService
     private var baseTimeout: TimeInterval {
         let stored = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
@@ -37,7 +36,6 @@ class AIEnhancementService: ObservableObject {
     init(aiService: AIService = AIService(), modelContext: ModelContext) {
         self.aiService = aiService
         self.modelContext = modelContext
-        self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
@@ -105,10 +103,8 @@ class AIEnhancementService: ObservableObject {
     ) async -> String {
         let useSelectedText = configuration.useSelectedTextContext
         let useClipboard = configuration.useClipboardContext
-        let useScreenCapture = configuration.useScreenCaptureContext
 
         lastCapturedClipboard = contextSnapshot?.clipboardText
-        screenCaptureService.lastCapturedText = contextSnapshot?.screenText
 
         let selectedTextContext: String
         if useSelectedText,
@@ -130,16 +126,6 @@ class AIEnhancementService: ObservableObject {
                 ""
             }
 
-        let screenCaptureContext =
-            if useScreenCapture,
-                let capturedText = screenCaptureService.lastCapturedText,
-                !capturedText.isEmpty
-            {
-                "<CURRENT_WINDOW_CONTEXT>\n\(capturedText)\n</CURRENT_WINDOW_CONTEXT>"
-            } else {
-                ""
-            }
-
         let customVocabulary = customVocabularyService.getCustomVocabulary(from: modelContext)
 
         let customVocabularySection =
@@ -155,7 +141,7 @@ class AIEnhancementService: ObservableObject {
                 ""
             }
 
-        let contextBlocks = [selectedTextContext, clipboardContext, screenCaptureContext]
+        let contextBlocks = [selectedTextContext, clipboardContext]
             .filter { !$0.isEmpty }
 
         let contextSection =
@@ -447,25 +433,12 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
-    func captureScreenContext() async {
-        guard CGPreflightScreenCaptureAccess() else {
-            return
-        }
-
-        if await screenCaptureService.captureAndExtractText() != nil {
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        }
-    }
-
     func captureClipboardContext() {
         lastCapturedClipboard = NSPasteboard.general.string(forType: .string)
     }
 
     func clearCapturedContexts() {
         lastCapturedClipboard = nil
-        screenCaptureService.lastCapturedText = nil
     }
 
     @discardableResult

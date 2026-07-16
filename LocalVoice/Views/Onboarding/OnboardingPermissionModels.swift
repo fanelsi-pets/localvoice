@@ -85,7 +85,7 @@ enum OnboardingStage: String, CaseIterable {
             return String(
                 localized: "LocalVoice can select the right mode from the app you are using and the rules you configure.")
         case .trust:
-            return String(localized: "Local Voice is fully offline. No data can leave your device.")
+            return String(localized: "Choose local processing to keep audio and transcripts entirely on your Mac.")
         }
     }
 
@@ -97,12 +97,11 @@ enum OnboardingStage: String, CaseIterable {
 enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
     case microphone
     case accessibility
-    case screenRecording
 
     var id: String { rawValue }
 
     static var required: [OnboardingPermissionKind] {
-        [.microphone, .accessibility, .screenRecording]
+        [.microphone, .accessibility]
     }
 
     var isRequired: Bool {
@@ -121,13 +120,6 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
             return OnboardingPermissionDescriptor(
                 title: String(localized: "Accessibility"),
                 subtitle: String(localized: "LocalVoice uses Accessibility to type transcriptions directly into any app.")
-            )
-
-        case .screenRecording:
-            return OnboardingPermissionDescriptor(
-                title: String(localized: "Screen Recording"),
-                subtitle: String(
-                    localized: "LocalVoice reads visible screen content to improve the accuracy of transcripts.")
             )
         }
     }
@@ -185,7 +177,6 @@ enum OnboardingPermissionStatus: Equatable {
 enum PrivacySettingsPane {
     case microphone
     case accessibility
-    case screenRecording
 
     var urlString: String {
         switch self {
@@ -193,8 +184,6 @@ enum PrivacySettingsPane {
             return "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
         case .accessibility:
             return "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-        case .screenRecording:
-            return "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
         }
     }
 }

@@ -5,6 +5,11 @@ import Testing
 @testable import LocalVoice
 
 struct LocalVoiceTests {
+    @Test func onboardingRequestsOnlyEssentialPermissions() {
+        #expect(OnboardingPermissionKind.allCases == [.microphone, .accessibility])
+        #expect(OnboardingPermissionKind.required == [.microphone, .accessibility])
+    }
+
     @Test @MainActor func comparesReleaseVersions() {
         #expect(GitHubUpdateService.isNewer("v3.0.0", than: "2.4.8"))
         #expect(GitHubUpdateService.isNewer("3.0.1", than: "3.0"))

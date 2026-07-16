@@ -5,7 +5,6 @@ struct RecordingContextSnapshot {
     var capturedAt = Date()
     var selectedText: String?
     var clipboardText: String?
-    var screenText: String?
 }
 
 @MainActor
@@ -18,10 +17,6 @@ final class RecordingContextSnapshotStore {
 
     func updateClipboardText(_ text: String?) {
         snapshot.clipboardText = Self.normalized(text)
-    }
-
-    func updateScreenText(_ text: String?) {
-        snapshot.screenText = Self.normalized(text)
     }
 
     private static func normalized(_ text: String?) -> String? {
@@ -43,13 +38,6 @@ enum RecordingContextCaptureService {
                 let selectedText = await SelectedTextService.fetchSelectedText()
                 guard !Task.isCancelled else { return }
                 store.updateSelectedText(selectedText)
-            },
-            Task { @MainActor in
-                guard CGPreflightScreenCaptureAccess(), !Task.isCancelled else { return }
-                let screenCaptureService = ScreenCaptureService()
-                let screenText = await screenCaptureService.captureAndExtractText()
-                guard !Task.isCancelled else { return }
-                store.updateScreenText(screenText)
             },
         ]
     }

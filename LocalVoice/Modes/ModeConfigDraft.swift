@@ -16,7 +16,6 @@ struct ModeConfigDraft {
     var isTextFormattingEnabled: Bool
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
-    var useScreenCapture: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var outputMode: ModeOutputMode
@@ -47,7 +46,6 @@ struct ModeConfigDraft {
             isTextFormattingEnabled = true
             useClipboardContext = false
             useSelectedTextContext = false
-            useScreenCapture = true
             selectedAIProvider = inheritedConfig?.selectedAIProvider
             selectedAIModel = inheritedConfig?.selectedAIModel
             outputMode = .paste
@@ -74,7 +72,6 @@ struct ModeConfigDraft {
             isTextFormattingEnabled = latestConfig.isTextFormattingEnabled
             useClipboardContext = latestConfig.useClipboardContext
             useSelectedTextContext = latestConfig.useSelectedTextContext
-            useScreenCapture = latestConfig.useScreenCapture
             selectedAIProvider = latestConfig.selectedAIProvider
             selectedAIModel = latestConfig.selectedAIModel
             outputMode = latestConfig.outputMode
@@ -181,7 +178,6 @@ struct ModeConfigDraft {
                 selectedLanguage: selectedLanguage,
                 useClipboardContext: useClipboardContext,
                 useSelectedTextContext: useSelectedTextContext,
-                useScreenCapture: useScreenCapture,
                 isTextFormattingEnabled: isTextFormattingEnabled,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
@@ -207,7 +203,6 @@ struct ModeConfigDraft {
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
             updatedConfig.useClipboardContext = useClipboardContext
             updatedConfig.useSelectedTextContext = useSelectedTextContext
-            updatedConfig.useScreenCapture = useScreenCapture
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.outputMode = outputMode

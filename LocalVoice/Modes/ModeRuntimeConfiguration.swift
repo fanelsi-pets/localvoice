@@ -34,7 +34,6 @@ struct EnhancementRuntimeConfiguration {
     let modelName: String?
     let useClipboardContext: Bool
     let useSelectedTextContext: Bool
-    let useScreenCaptureContext: Bool
 
     func replacingPrompt(_ prompt: CustomPrompt) -> EnhancementRuntimeConfiguration {
         EnhancementRuntimeConfiguration(
@@ -44,8 +43,7 @@ struct EnhancementRuntimeConfiguration {
             provider: provider,
             modelName: modelName,
             useClipboardContext: useClipboardContext,
-            useSelectedTextContext: useSelectedTextContext,
-            useScreenCaptureContext: useScreenCaptureContext
+            useSelectedTextContext: useSelectedTextContext
         )
     }
 }
@@ -123,8 +121,7 @@ enum ModeRuntimeResolver {
             provider: provider,
             modelName: modelName,
             useClipboardContext: mode?.useClipboardContext ?? false,
-            useSelectedTextContext: mode?.useSelectedTextContext ?? true,
-            useScreenCaptureContext: mode?.useScreenCapture ?? false
+            useSelectedTextContext: mode?.useSelectedTextContext ?? true
         )
     }
 

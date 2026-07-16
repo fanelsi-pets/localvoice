@@ -12,9 +12,9 @@ struct EmailSupport {
         return """
 
             ------------------------
-            ✨ **SCREEN RECORDING HIGHLY RECOMMENDED** ✨
-            ▶️ Create a quick screen recording showing the issue!
-            ▶️ It helps me understand and fix the problem much faster.
+            ✨ **DIAGNOSTIC DETAILS ARE HELPFUL** ✨
+            ▶️ Describe the exact steps that reproduce the issue.
+            ▶️ Attach relevant screenshots or exported logs when available.
 
             📝 ISSUE DETAILS:
             - What steps did you take before the issue occurred?
