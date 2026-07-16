@@ -79,7 +79,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isTextFormattingEnabled: Bool = false
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
-    var useScreenCapture: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var outputMode: ModeOutputMode = .paste
@@ -91,7 +90,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled,
             selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled,
-            useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel,
+            useClipboardContext, useSelectedTextContext, selectedAIProvider, selectedAIModel,
             outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
         case legacyEmoji = "emoji"
         case selectedWhisperModel
@@ -104,7 +103,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
         selectedTranscriptionModelName: String? = nil, isRealtimeTranscriptionEnabled: Bool = true,
         selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true,
-        useScreenCapture: Bool = false,
         isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil,
         outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil,
         isEnabled: Bool = true, isDefault: Bool = false
@@ -120,7 +118,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         self.selectedPrompt = selectedPrompt
         self.useClipboardContext = useClipboardContext
         self.useSelectedTextContext = useSelectedTextContext
-        self.useScreenCapture = useScreenCapture
         self.autoSendKey = autoSendKey
         self.outputMode = outputMode
         self.customCommand = customCommand
@@ -179,9 +176,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         } else {
             useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
         }
-        useScreenCapture =
-            try container.decodeIfPresent(Bool.self, forKey: .useScreenCapture)
-            ?? UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         outputMode = try container.decodeIfPresent(ModeOutputMode.self, forKey: .outputMode) ?? .paste
@@ -224,7 +218,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         try container.encode(isTextFormattingEnabled, forKey: .isTextFormattingEnabled)
         try container.encode(useClipboardContext, forKey: .useClipboardContext)
         try container.encode(useSelectedTextContext, forKey: .useSelectedTextContext)
-        try container.encode(useScreenCapture, forKey: .useScreenCapture)
         try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
         try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
         try container.encode(outputMode, forKey: .outputMode)

@@ -102,23 +102,6 @@
           }
         }
       }
-    },
-    "NSScreenCaptureUsageDescription": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "LocalVoice needs screen recording access to understand context from your screen for improved transcription accuracy."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local Voice використовує вміст екрана як локальний контекст для точнішого тексту."
-          }
-        }
-      }
     }
   },
   "version": "1.0"

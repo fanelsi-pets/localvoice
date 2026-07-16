@@ -90,7 +90,7 @@ final class OnboardingPermissionController {
         switch permission {
         case .microphone:
             return permissionStatus.requiresSettings ? String(localized: "Open Settings") : String(localized: "Allow")
-        case .accessibility, .screenRecording:
+        case .accessibility:
             return String(localized: "Allow")
         }
     }
@@ -110,8 +110,6 @@ final class OnboardingPermissionController {
             handleMicrophoneAction()
         case .accessibility:
             requestAccessibility()
-        case .screenRecording:
-            requestScreenRecording()
         }
     }
 
@@ -138,10 +136,6 @@ final class OnboardingPermissionController {
 
         case .accessibility:
             return AXIsProcessTrusted() ? .granted : .needsAccess
-
-        case .screenRecording:
-            return (CGPreflightScreenCaptureAccess() || coordinator.hasRequestedScreenRecording)
-                ? .granted : .needsAccess
         }
     }
 
@@ -174,26 +168,6 @@ final class OnboardingPermissionController {
             try? await Task.sleep(for: .milliseconds(800))
             guard let self, !AXIsProcessTrusted() else { return }
             openPrivacySettings(.accessibility)
-        }
-    }
-
-    private func requestScreenRecording() {
-        startPollingPermissionStatus()
-
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-
-            let isGranted = await ScreenCaptureService.requestScreenCapturePermissionRegistration()
-            if isGranted {
-                // CGPreflight may remain false until process restart even after
-                // the system dialog returns success. Remember that acceptance
-                // so onboarding updates immediately and proceeds automatically.
-                coordinator.hasRequestedScreenRecording = true
-                coordinator.permissionStatuses[.screenRecording] = .granted
-                refreshPermissionStatuses()
-            } else {
-                openPrivacySettings(.screenRecording)
-            }
         }
     }
 

@@ -42,6 +42,7 @@ struct OnboardingTranscriptionSetupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             setupSwitcher
+            privacyNotice
 
             switch setupKind {
             case .local:
@@ -119,6 +120,60 @@ struct OnboardingTranscriptionSetupCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+
+    private var privacyNotice: some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: setupKind == .local ? "lock.shield.fill" : "person.crop.circle.badge.checkmark")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(setupKind == .local ? .green : AppTheme.Action.primaryFill)
+                .frame(width: 22, height: 22)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(
+                    setupKind == .local
+                        ? String(localized: "Fully local on this Mac")
+                        : String(localized: "Cloud only when you choose it")
+                )
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(AppTheme.Text.primary)
+
+                Text(
+                    setupKind == .local
+                        ? String(
+                            localized:
+                                "Audio and transcripts stay on this Mac. Nothing is sent to a cloud service.")
+                        : String(
+                            localized:
+                                "Audio is sent only to the provider you connect. You can switch to local processing at any time.")
+                )
+                .font(.system(size: 12))
+                .foregroundColor(AppTheme.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    setupKind == .local
+                        ? Color.green.opacity(0.08)
+                        : AppTheme.Surface.control.opacity(0.72)
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(
+                    setupKind == .local
+                        ? Color.green.opacity(0.28)
+                        : AppTheme.Border.subtle,
+                    lineWidth: 1
+                )
+        )
+        .accessibilityElement(children: .combine)
     }
 
     private var localSetup: some View {

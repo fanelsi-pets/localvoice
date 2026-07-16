@@ -86,7 +86,6 @@ enum StarterModeFactory {
             selectedLanguage: selectedLanguage,
             useClipboardContext: template.kind == .email,
             useSelectedTextContext: template.useSelectedTextContext,
-            useScreenCapture: template.useScreenCapture,
             isTextFormattingEnabled: true,
             selectedAIProvider: template.usesAIEnhancement ? provider.rawValue : nil,
             selectedAIModel: template.usesAIEnhancement ? (modelName ?? provider.defaultModel) : nil,

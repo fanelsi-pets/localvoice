@@ -6,11 +6,9 @@ struct PermissionStepRow: View {
     let status: OnboardingPermissionStatus
     let isActive: Bool
     let isLocked: Bool
-    let showsRestartHint: Bool
     let actionTitle: String
     let onSelect: () -> Void
     let onAction: () -> Void
-    let onQuit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -37,10 +35,6 @@ struct PermissionStepRow: View {
                 }
             }
 
-            if isActive && !isLocked && showsRestartHint {
-                restartHint
-                    .padding(.leading, 44)
-            }
         }
         .padding(14)
         .background(
@@ -110,19 +104,4 @@ struct PermissionStepRow: View {
         }
     }
 
-    private var restartHint: some View {
-        HStack(spacing: 8) {
-            Text("Restart Local Voice if macOS asks to apply Screen Recording access.")
-                .font(.system(size: 12))
-                .foregroundColor(AppTheme.Text.muted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Button("Quit") {
-                onQuit()
-            }
-            .font(.system(size: 12, weight: .semibold))
-            .buttonStyle(.plain)
-            .foregroundColor(AppTheme.Action.secondaryForeground)
-        }
-    }
 }

@@ -56,7 +56,7 @@ private struct TrustHeader: View {
                         .fill(AppTheme.Surface.controlActive)
                 )
 
-            Text("Local Voice is always local")
+            Text("You decide where your voice is processed")
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(AppTheme.Text.primary)
                 .multilineTextAlignment(.center)
@@ -74,12 +74,12 @@ private struct TrustBody: View {
                 .padding(.bottom, 28)
 
             VStack(spacing: 10) {
-                Text("Your data never has to leave your device.")
+                Text("Local mode keeps everything on this Mac.")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .multilineTextAlignment(.center)
 
-                Text("Local transcription stays on this Mac. Cloud transcription is used only when you explicitly choose Gemini or OpenAI in settings.")
+                Text("With a downloaded model, audio and transcripts stay on your Mac. Cloud services are contacted only when you explicitly select and connect a cloud provider.")
                     .font(.system(size: 13))
                     .foregroundColor(AppTheme.Text.secondary)
                     .multilineTextAlignment(.center)

@@ -21,7 +21,6 @@ struct StarterModeTemplate: Identifiable {
     let outputMode: ModeOutputMode
     let usesAIEnhancement: Bool
     let useSelectedTextContext: Bool
-    let useScreenCapture: Bool
     let isDefault: Bool
 
     var featureLabels: [String] {
@@ -59,7 +58,6 @@ enum StarterModeCatalog {
             outputMode: .paste,
             usesAIEnhancement: false,
             useSelectedTextContext: false,
-            useScreenCapture: false,
             isDefault: true
         ),
         StarterModeTemplate(
@@ -74,7 +72,6 @@ enum StarterModeCatalog {
             outputMode: .paste,
             usesAIEnhancement: true,
             useSelectedTextContext: true,
-            useScreenCapture: true,
             isDefault: false
         ),
         StarterModeTemplate(
@@ -89,7 +86,6 @@ enum StarterModeCatalog {
             outputMode: .paste,
             usesAIEnhancement: true,
             useSelectedTextContext: true,
-            useScreenCapture: true,
             isDefault: false
         ),
         StarterModeTemplate(
@@ -104,7 +100,6 @@ enum StarterModeCatalog {
             outputMode: .paste,
             usesAIEnhancement: true,
             useSelectedTextContext: true,
-            useScreenCapture: false,
             isDefault: false
         ),
         StarterModeTemplate(
@@ -119,7 +114,6 @@ enum StarterModeCatalog {
             outputMode: .respond,
             usesAIEnhancement: true,
             useSelectedTextContext: false,
-            useScreenCapture: false,
             isDefault: false
         ),
     ]

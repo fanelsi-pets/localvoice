@@ -24,16 +24,12 @@ struct OnboardingView: View {
                         contentMaxWidth: contentMaxWidth,
                         isComplete: coordinator.requiredPermissionsGranted,
                         activePermission: coordinator.activePermission,
-                        hasRequestedScreenRecording: coordinator.hasRequestedScreenRecording,
                         stepNumber: { coordinator.permissions.stepNumber(for: $0) },
                         status: { coordinator.permissions.status(for: $0) },
                         isLocked: { coordinator.permissions.isLocked($0) },
                         actionTitle: { coordinator.permissions.actionTitle(for: $0) },
                         onSelect: coordinator.permissions.setActivePermission,
                         onAction: coordinator.permissions.performAction,
-                        onQuit: {
-                            NSApplication.shared.terminate(nil)
-                        },
                         onRecheck: coordinator.permissions.refreshPermissionStatuses,
                         onContinue: coordinator.flow.goToMicrophoneStep
                     )

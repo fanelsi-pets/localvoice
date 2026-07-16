@@ -14,12 +14,6 @@ final class OnboardingCoordinator: ObservableObject {
         }
     }
 
-    @Published var hasRequestedScreenRecording: Bool {
-        didSet {
-            defaults.set(hasRequestedScreenRecording, forKey: OnboardingStorageKeys.requestedScreenRecording)
-        }
-    }
-
     @Published var experienceStepIndex: Int {
         didSet {
             defaults.set(experienceStepIndex, forKey: OnboardingStorageKeys.experienceIndex)
@@ -71,7 +65,6 @@ final class OnboardingCoordinator: ObservableObject {
         self.storedActivePermission =
             defaults.string(forKey: OnboardingStorageKeys.activePermission)
             ?? OnboardingPermissionKind.microphone.rawValue
-        self.hasRequestedScreenRecording = defaults.bool(forKey: OnboardingStorageKeys.requestedScreenRecording)
         self.experienceStepIndex = defaults.integer(forKey: OnboardingStorageKeys.experienceIndex)
         self.storedOnboardingAIProvider =
             defaults.string(forKey: OnboardingStorageKeys.aiProvider) ?? AIProvider.gemini.rawValue
@@ -402,7 +395,6 @@ final class OnboardingCoordinator: ObservableObject {
 enum OnboardingStorageKeys {
     static let stage = "onboardingStage"
     static let activePermission = "onboardingActivePermission"
-    static let requestedScreenRecording = "onboardingRequestedScreenRecording"
     static let experienceIndex = "onboardingExperienceIndex"
     static let aiProvider = "onboardingAIProvider"
     static let transcriptionSetupKind = "onboardingTranscriptionSetupKind"
@@ -412,7 +404,6 @@ enum OnboardingStorageKeys {
     static let onboardingKeys = [
         stage,
         activePermission,
-        requestedScreenRecording,
         aiProvider,
         transcriptionSetupKind,
         transcriptionProvider,

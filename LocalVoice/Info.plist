@@ -8,8 +8,6 @@
 	<string>Local Voice needs microphone access to record audio for on-device transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>LocalVoice needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
-	<key>NSScreenCaptureUsageDescription</key>
-	<string>LocalVoice needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
