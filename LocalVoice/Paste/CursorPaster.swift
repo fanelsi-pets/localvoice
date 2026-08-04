@@ -15,6 +15,10 @@ class CursorPaster {
         var didPostPasteCommand: Bool {
             self == .commandPosted
         }
+
+        var shouldRestoreClipboard: Bool {
+            self == .commandPosted
+        }
     }
 
     private static let prePasteDelay: TimeInterval = 0.10
@@ -63,12 +67,14 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()
-        scheduleClipboardRestore(
-            savedContents,
-            expectedText: text,
-            sessionID: sessionID,
-            on: pasteboard
-        )
+        if pasteResult.shouldRestoreClipboard {
+            scheduleClipboardRestore(
+                savedContents,
+                expectedText: text,
+                sessionID: sessionID,
+                on: pasteboard
+            )
+        }
 
         return pasteResult
     }
@@ -176,6 +182,7 @@ class CursorPaster {
     private static func pasteFromClipboard() async -> PasteResult {
         guard AXIsProcessTrusted() else {
             logger.error("Accessibility permission is required to paste with simulated key events")
+            requestAccessibilityPermission()
             return .commandNotPosted
         }
 
@@ -203,6 +210,29 @@ class CursorPaster {
         cmdUp.post(tap: .cghidEventTap)
 
         return .commandPosted
+    }
+
+    @MainActor
+    private static func requestAccessibilityPermission() {
+        let promptOptions = [
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
+        ] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(promptOptions)
+
+        NotificationManager.shared.showNotification(
+            title: String(localized: "Accessibility permission is not provided"),
+            type: .warning,
+            duration: 7.0,
+            actionButton: (String(localized: "Open Settings"), openAccessibilitySettings)
+        )
+    }
+
+    private static func openAccessibilitySettings() {
+        guard
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private static func wait(_ seconds: TimeInterval) async {

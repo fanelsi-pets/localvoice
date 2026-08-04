@@ -50,6 +50,11 @@ struct LocalVoiceTests {
         #expect(OnboardingPermissionKind.required == [.microphone, .accessibility])
     }
 
+    @Test func failedAutomaticPasteKeepsTranscriptInClipboardForRecovery() {
+        #expect(CursorPaster.PasteResult.commandPosted.shouldRestoreClipboard)
+        #expect(!CursorPaster.PasteResult.commandNotPosted.shouldRestoreClipboard)
+    }
+
     @Test @MainActor func permissionPrePromptsUseNeutralContinueCopy() {
         let suiteName = "LocalVoiceTests.PermissionPrePrompt.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
