@@ -46,7 +46,11 @@ enum ModeOutputMode: String, Codable, CaseIterable {
     }
 
     static func choices(canRespond: Bool) -> [ModeOutputMode] {
-        canRespond ? [.paste, .respond, .customCommand] : [.paste, .customCommand]
+        var choices: [ModeOutputMode] = canRespond ? [.paste, .respond] : [.paste]
+        if AppDistribution.allowsCustomCommands {
+            choices.append(.customCommand)
+        }
+        return choices
     }
 }
 
@@ -180,6 +184,10 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         outputMode = try container.decodeIfPresent(ModeOutputMode.self, forKey: .outputMode) ?? .paste
         customCommand = try container.decodeIfPresent(ModeCustomCommand.self, forKey: .customCommand)
+        if !AppDistribution.allowsCustomCommands && outputMode == .customCommand {
+            outputMode = .paste
+            customCommand = nil
+        }
         // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
         if let rawValue = try container.decodeIfPresent(String.self, forKey: .autoSendKey),
             let newKey = AutoSendKey(rawValue: rawValue)

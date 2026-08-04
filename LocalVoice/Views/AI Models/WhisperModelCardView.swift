@@ -140,11 +140,15 @@ struct WhisperModelCardView: View {
             }
 
             if isDownloaded {
-                Menu {
-                    Button(action: deleteAction) {
-                        Label("Delete Model", systemImage: "trash")
-                    }
+                Button(role: .destructive, action: deleteAction) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Delete Model")
 
+                Menu {
                     Button {
                         if let modelURL = modelURL {
                             NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
@@ -197,10 +201,15 @@ struct ImportedWhisperModelCardView: View {
                 }
 
                 if isDownloaded {
+                    Button(role: .destructive, action: deleteAction) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Delete Model")
+
                     Menu {
-                        Button(action: deleteAction) {
-                            Label("Delete Model", systemImage: "trash")
-                        }
                         Button {
                             if let modelURL = modelURL {
                                 NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")

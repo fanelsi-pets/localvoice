@@ -45,7 +45,9 @@ class ActiveWindowService: ObservableObject {
             ModeManager.shared.setActiveConfiguration(quickConfig)
         }
 
-        guard let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
+        guard AppDistribution.allowsBrowserURLAutomation,
+            let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier })
+        else {
             return Task {}
         }
 

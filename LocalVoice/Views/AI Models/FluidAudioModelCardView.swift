@@ -161,13 +161,17 @@ struct FluidAudioModelCardView: View {
             }
 
             if isDownloaded && !isDownloading {
-                Menu {
-                    Button(action: {
-                        fluidAudioModelManager.deleteFluidAudioModel(model)
-                    }) {
-                        Label("Delete Model", systemImage: "trash")
-                    }
+                Button(role: .destructive) {
+                    fluidAudioModelManager.deleteFluidAudioModel(model)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Delete Model")
 
+                Menu {
                     Button {
                         fluidAudioModelManager.showFluidAudioModelInFinder(model)
                     } label: {

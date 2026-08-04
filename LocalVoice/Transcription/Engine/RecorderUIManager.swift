@@ -182,6 +182,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                 await dismissRecorderPanel()
             }
         } else {
+            guard PurchaseManager.shared.requireAccess() else { return }
             SoundManager.shared.playStartSound()
             isRecorderPanelVisible = true
             await engine.toggleRecord(

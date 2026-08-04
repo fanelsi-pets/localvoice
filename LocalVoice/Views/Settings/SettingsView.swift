@@ -11,6 +11,7 @@ struct SettingsView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = true
@@ -147,7 +148,7 @@ struct SettingsView: View {
 
             Section("Pasting") {
                 Picker(selection: $pasteMethodRawValue) {
-                    ForEach(PasteMethod.allCases) { method in
+                    ForEach(PasteMethod.availableCases) { method in
                         Text(method.displayName).tag(method.rawValue)
                     }
                 } label: {
@@ -226,7 +227,17 @@ struct SettingsView: View {
                 )
             }
 
+            InstalledWhisperModelsSettingsSection()
+
             APIKeyManagementView()
+
+            if AppDistribution.isAppStore {
+                Section("Access") {
+                    PurchaseStatusCard {
+                        NotificationCenter.default.post(name: .localVoicePurchaseRequired, object: nil)
+                    }
+                }
+            }
 
             Section("General") {
                 Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)

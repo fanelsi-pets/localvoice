@@ -132,16 +132,40 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
 
         let languageMenu = NSMenu(title: String(localized: "Dictation Language"))
         let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
-        for language in [("uk", "Українська"), ("ru", "Русский"), ("en", "English")] {
-            let item = NSMenuItem(
-                title: language.1,
-                action: #selector(selectDictationLanguage(_:)),
+        let availableLanguages =
+            engine?.transcriptionModelManager.currentTranscriptionModel.map {
+                TranscriptionLanguageSupport.languages(for: $0)
+            } ?? LanguageDictionary.all
+        let recentLanguages = TranscriptionLanguageCatalog.recentOptions(from: availableLanguages)
+        let popularLanguages = TranscriptionLanguageCatalog.popularOptions(from: availableLanguages)
+        let remainingLanguages = TranscriptionLanguageCatalog.remainingOptions(from: availableLanguages)
+
+        if !recentLanguages.isEmpty {
+            addLanguageSectionHeader(String(localized: "Recent Languages"), to: languageMenu)
+            recentLanguages.forEach {
+                languageMenu.addItem(languageMenuItem(for: $0, selectedLanguage: selectedLanguage))
+            }
+            languageMenu.addItem(.separator())
+        }
+
+        addLanguageSectionHeader(String(localized: "Popular Languages"), to: languageMenu)
+        popularLanguages.forEach {
+            languageMenu.addItem(languageMenuItem(for: $0, selectedLanguage: selectedLanguage))
+        }
+
+        if !remainingLanguages.isEmpty {
+            languageMenu.addItem(.separator())
+            let allLanguagesMenu = NSMenu(title: String(localized: "All Languages"))
+            remainingLanguages.forEach {
+                allLanguagesMenu.addItem(languageMenuItem(for: $0, selectedLanguage: selectedLanguage))
+            }
+            let allLanguagesItem = NSMenuItem(
+                title: String(localized: "All Languages"),
+                action: nil,
                 keyEquivalent: ""
             )
-            item.target = self
-            item.representedObject = language.0
-            item.state = selectedLanguage == language.0 ? .on : .off
-            languageMenu.addItem(item)
+            allLanguagesItem.submenu = allLanguagesMenu
+            languageMenu.addItem(allLanguagesItem)
         }
         let languageItem = NSMenuItem(title: String(localized: "Dictation Language"), action: nil, keyEquivalent: "")
         languageItem.submenu = languageMenu
@@ -226,6 +250,27 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         menu.addItem(quit)
     }
 
+    private func addLanguageSectionHeader(_ title: String, to menu: NSMenu) {
+        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+    }
+
+    private func languageMenuItem(
+        for option: TranscriptionLanguageOption,
+        selectedLanguage: String
+    ) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: option.name,
+            action: #selector(selectDictationLanguage(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = option.code
+        item.state = selectedLanguage == option.code ? .on : .off
+        return item
+    }
+
     private func fetchRecentTranscriptions(limit: Int = 6) -> [(preview: String, text: String)] {
         guard let context = modelContainer?.mainContext else { return [] }
 
@@ -287,6 +332,7 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
     @objc private func selectDictationLanguage(_ sender: NSMenuItem) {
         guard let code = sender.representedObject as? String else { return }
         UserDefaults.standard.set(code, forKey: "SelectedLanguage")
+        TranscriptionLanguageCatalog.recordSelection(code)
         let updatedModes = ModeManager.shared.configurations.map { existing in
             var config = existing
             config.selectedLanguage = code

@@ -1,0 +1,50 @@
+{
+  "identifier" : "D791B8D3-42AE-4ACD-9C18-6FC60A00D64D",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "C73FA55B-479D-432D-B8E5-97B17ABF344D",
+      "localizations" : [
+        {
+          "description" : "Unlock every LocalVoice feature forever. One purchase, no subscription.",
+          "displayName" : "LocalVoice Lifetime",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Відкрийте всі функції LocalVoice назавжди. Одна покупка, без підписки.",
+          "displayName" : "LocalVoice назавжди",
+          "locale" : "uk"
+        },
+        {
+          "description" : "Откройте все функции LocalVoice навсегда. Одна покупка, без подписки.",
+          "displayName" : "LocalVoice навсегда",
+          "locale" : "ru"
+        }
+      ],
+      "productID" : "app.localvoice.LocalVoice.lifetime",
+      "referenceName" : "LocalVoice Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6795282453",
+    "_developerTeamID" : "MJS369PZL8",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

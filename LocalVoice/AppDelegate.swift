@@ -71,13 +71,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
             NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
         } else {
-            // Running: focus current window and route in-place to Transcribe Audio
+            // Running: focus current window and route the file to Meetings.
             logger.notice(
                 "🧭 Routing media URL to existing main window. urlLastPath=\(url.lastPathComponent, privacy: .private(mask: .hash))"
             )
             WindowManager.shared.showMainWindow()
             NotificationCenter.default.post(
-                name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
+                name: .navigateToDestination, object: nil, userInfo: ["destination": "Meetings"])
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": url])
             }

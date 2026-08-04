@@ -87,6 +87,13 @@ final class TranscriptionDelivery {
     }
 
     private func deliverCustomCommand(_ item: Request, actions: Actions) async {
+        guard AppDistribution.allowsCustomCommands else {
+            logger.error("Custom command delivery is unavailable in this distribution")
+            SoundManager.shared.playStopSound()
+            await actions.dismiss()
+            return
+        }
+
         guard let text = item.text else {
             notifyCustomCommandFailure(CustomCommandDeliveryError.noTextToDeliver)
             SoundManager.shared.playStopSound()

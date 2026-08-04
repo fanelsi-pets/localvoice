@@ -4,7 +4,9 @@ import SwiftData
 struct OpenAIProvider: CloudProvider {
     let modelProvider: ModelProvider = .openAI
     let providerKey = "OpenAI"
-    let languageCodes: [String]? = ["en", "ru", "uk"]
+    // OpenAI transcription models are multilingual. A nil allow-list exposes
+    // the complete shared catalog and lets the selected model validate it.
+    let languageCodes: [String]? = nil
     let includesAutoDetect = true
 
     var models: [CloudModel] {

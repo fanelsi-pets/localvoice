@@ -229,6 +229,8 @@ class LocalVoiceEngine: NSObject, ObservableObject {
                 await cleanupResources()
             }
         } else {
+            guard PurchaseManager.shared.requireAccess() else { return }
+
             let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
             let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession
 

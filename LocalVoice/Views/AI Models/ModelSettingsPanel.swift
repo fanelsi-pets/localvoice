@@ -12,6 +12,8 @@ struct ModelSettingsPanel: View {
                 TranscriptionModelSettingsView()
             case .enhancement:
                 EnhancementModelSettingsView()
+            case .storage:
+                LocalModelStorageSettingsView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -21,6 +23,7 @@ struct ModelSettingsPanel: View {
 private enum ModelSettingsTab: String, CaseIterable, Identifiable {
     case transcription = "Transcription"
     case enhancement = "Enhancement"
+    case storage = "Local Storage"
 
     var id: String { rawValue }
 
@@ -30,7 +33,20 @@ private enum ModelSettingsTab: String, CaseIterable, Identifiable {
             return "captions.bubble.fill"
         case .enhancement:
             return "sparkles"
+        case .storage:
+            return "internaldrive"
         }
+    }
+}
+
+private struct LocalModelStorageSettingsView: View {
+    var body: some View {
+        Form {
+            InstalledWhisperModelsSettingsSection()
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

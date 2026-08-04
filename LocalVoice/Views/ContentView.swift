@@ -5,7 +5,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case modes = "Modes"
     case models = "AI Models"
-    case transcribeAudio = "Transcribe Audio"
+    case meetings = "Meetings"
     case history = "History"
     case audio = "Audio"
     case dictionary = "Dictionary"
@@ -38,6 +38,8 @@ struct ContentView: View {
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
     @EnvironmentObject private var navigation: MainWindowNavigation
+    @EnvironmentObject private var purchaseManager: PurchaseManager
+    @State private var isShowingPaywall = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -49,7 +51,12 @@ struct ContentView: View {
         .frame(minHeight: AppWindowLayout.minimumHeight)
         .onAppear {
             logger.notice("ContentView appeared")
-            Task { await GitHubUpdateService.shared.checkForUpdates() }
+            if purchaseManager.accessState == .expired {
+                isShowingPaywall = true
+            }
+            if AppDistribution.allowsExternalUpdates {
+                Task { await GitHubUpdateService.shared.checkForUpdates() }
+            }
         }
         .onDisappear {
             logger.notice("ContentView disappeared")
@@ -61,7 +68,20 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await GitHubUpdateService.shared.checkForUpdates() }
+            if purchaseManager.accessState == .expired {
+                isShowingPaywall = true
+            }
+            if AppDistribution.allowsExternalUpdates {
+                Task { await GitHubUpdateService.shared.checkForUpdates() }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .localVoicePurchaseRequired)) { _ in
+            isShowingPaywall = true
+        }
+        .sheet(isPresented: $isShowingPaywall) {
+            PaywallView()
+                .environmentObject(purchaseManager)
+                .interactiveDismissDisabled(purchaseManager.accessState == .expired)
         }
     }
 
@@ -92,8 +112,8 @@ struct ContentView: View {
             DashboardView()
         case .models:
             ModelManagementView()
-        case .transcribeAudio:
-            AudioTranscribeView()
+        case .meetings:
+            MeetingTranscribeView()
         case .history:
             InlineHistoryView()
         case .audio:

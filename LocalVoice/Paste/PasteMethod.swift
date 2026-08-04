@@ -9,6 +9,10 @@ enum PasteMethod: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    static var availableCases: [PasteMethod] {
+        AppDistribution.allowsAppleScriptAutomation ? allCases : [.standard]
+    }
+
     var displayName: String {
         switch self {
         case .standard:
@@ -19,6 +23,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
     }
 
     static func current(in defaults: UserDefaults = .standard) -> PasteMethod {
+        guard AppDistribution.allowsAppleScriptAutomation else { return .standard }
+
         if let rawValue = defaults.string(forKey: userDefaultsKey),
             let method = PasteMethod(rawValue: rawValue)
         {
@@ -29,8 +35,9 @@ enum PasteMethod: String, CaseIterable, Identifiable {
     }
 
     static func setCurrent(_ method: PasteMethod, in defaults: UserDefaults = .standard) {
-        defaults.set(method.rawValue, forKey: userDefaultsKey)
-        defaults.set(method == .appleScript, forKey: legacyAppleScriptPasteKey)
+        let supportedMethod = AppDistribution.allowsAppleScriptAutomation ? method : .standard
+        defaults.set(supportedMethod.rawValue, forKey: userDefaultsKey)
+        defaults.set(supportedMethod == .appleScript, forKey: legacyAppleScriptPasteKey)
     }
 
     static func migrateLegacyUserDefaultIfNeeded(in defaults: UserDefaults = .standard) {

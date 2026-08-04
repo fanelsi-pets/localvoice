@@ -89,9 +89,9 @@ final class OnboardingPermissionController {
 
         switch permission {
         case .microphone:
-            return permissionStatus.requiresSettings ? String(localized: "Open Settings") : String(localized: "Allow")
+            return permissionStatus.requiresSettings ? String(localized: "Open Settings") : String(localized: "Continue")
         case .accessibility:
-            return String(localized: "Allow")
+            return String(localized: "Continue")
         }
     }
 

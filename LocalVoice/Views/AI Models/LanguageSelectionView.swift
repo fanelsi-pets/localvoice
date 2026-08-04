@@ -18,6 +18,7 @@ struct LanguageSelectionView: View {
 
         // Update UI state - the UserDefaults updating is now automatic with @AppStorage
         selectedLanguage = language
+        TranscriptionLanguageCatalog.recordSelection(language)
 
         // Force the prompt to update for the new language
         whisperPrompt.updateTranscriptionPrompt()
@@ -60,7 +61,9 @@ struct LanguageSelectionView: View {
 
     // Get the display name of the current language
     private func currentLanguageDisplayName() -> String {
-        return availableLanguagesForCurrentModel()[selectedLanguage] ?? "Unknown"
+        let languages = availableLanguagesForCurrentModel()
+        guard let fallbackName = languages[selectedLanguage] else { return String(localized: "Unknown") }
+        return TranscriptionLanguageCatalog.localizedName(for: selectedLanguage, fallback: fallbackName)
     }
 
     private var selectedLanguageBinding: Binding<String> {
@@ -127,13 +130,11 @@ struct LanguageSelectionView: View {
                         HStack(spacing: 8) {
                             Picker("Select Language", selection: selectedLanguageBinding) {
                                 ForEach(
-                                    availableLanguagesForCurrentModel().sorted(by: {
-                                        if $0.key == "auto" { return true }
-                                        if $1.key == "auto" { return false }
-                                        return $0.value < $1.value
-                                    }), id: \.key
-                                ) { key, value in
-                                    Text(value).tag(key)
+                                    TranscriptionLanguageCatalog.allOptions(
+                                        from: availableLanguagesForCurrentModel()
+                                    )
+                                ) { option in
+                                    Text(option.name).tag(option.code)
                                 }
                             }
                             .pickerStyle(MenuPickerStyle())
@@ -195,18 +196,16 @@ struct LanguageSelectionView: View {
                 HStack(spacing: 8) {
                     Menu {
                         ForEach(
-                            availableLanguagesForCurrentModel().sorted(by: {
-                                if $0.key == "auto" { return true }
-                                if $1.key == "auto" { return false }
-                                return $0.value < $1.value
-                            }), id: \.key
-                        ) { key, value in
+                            TranscriptionLanguageCatalog.allOptions(
+                                from: availableLanguagesForCurrentModel()
+                            )
+                        ) { option in
                             Button {
-                                updateLanguage(key)
+                                updateLanguage(option.code)
                             } label: {
                                 HStack {
-                                    Text(value)
-                                    if selectedLanguage == key {
+                                    Text(option.name)
+                                    if selectedLanguage == option.code {
                                         Image(systemName: "checkmark")
                                     }
                                 }

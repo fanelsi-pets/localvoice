@@ -11,6 +11,12 @@
             "value": "Local Voice"
           }
         },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local Voice"
+          }
+        },
         "uk": {
           "stringUnit": {
             "state": "translated",
@@ -27,6 +33,12 @@
           "stringUnit": {
             "state": "new",
             "value": "LocalVoice"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local Voice"
           }
         },
         "uk": {
@@ -46,6 +58,12 @@
             "value": "Audio/Video File"
           }
         },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудио/видеофайл"
+          }
+        },
         "uk": {
           "stringUnit": {
             "state": "translated",
@@ -62,6 +80,12 @@
           "stringUnit": {
             "state": "new",
             "value": "LocalVoice needs to interact with your browser to detect the current website for applying website-specific configurations."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local Voice взаимодействует с браузером, чтобы применять настройки для текущего сайта."
           }
         },
         "uk": {
@@ -93,6 +117,12 @@
           "stringUnit": {
             "state": "new",
             "value": "Local Voice needs microphone access to record audio for on-device transcription."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local Voice требуется доступ к микрофону для записи и расшифровки речи."
           }
         },
         "uk": {

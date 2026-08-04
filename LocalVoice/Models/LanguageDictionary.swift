@@ -33,6 +33,140 @@ enum TranscriptionLanguageSupport {
 
 }
 
+struct TranscriptionLanguageOption: Identifiable, Equatable {
+    let code: String
+    let name: String
+
+    var id: String { code }
+}
+
+enum TranscriptionLanguageCatalog {
+    private static let recentLanguagesKey = "RecentTranscriptionLanguages"
+    private static let maximumRecentLanguageCount = 5
+
+    /// A compact, stable list for quick-pick menus. The complete model-specific
+    /// list remains available separately.
+    private static let popularLanguageCodes = [
+        "auto",
+        "uk", "en", "ru", "es", "fr", "de", "it", "pt", "pl",
+        "nl", "cs", "ro", "tr", "ar", "he", "fa", "hi", "bn",
+        "zh", "yue", "ja", "ko", "id", "ms", "vi", "th", "el",
+        "sv", "no", "da", "fi",
+    ]
+
+    private static let preferredRegionalCodes: [String: [String]] = [
+        "uk": ["uk-UA"],
+        "en": ["en-US", "en-GB"],
+        "ru": ["ru-RU"],
+        "es": ["es-ES", "es-MX", "es-US"],
+        "fr": ["fr-FR", "fr-CA"],
+        "de": ["de-DE", "de-AT", "de-CH"],
+        "it": ["it-IT"],
+        "pt": ["pt-BR", "pt-PT"],
+        "zh": ["zh-CN", "zh-TW", "zh-HK"],
+        "yue": ["yue-CN"],
+        "ja": ["ja-JP"],
+        "ko": ["ko-KR"],
+        "no": ["nb-NO", "nn-NO"],
+    ]
+
+    static func allOptions(from languages: [String: String], locale: Locale = .current)
+        -> [TranscriptionLanguageOption]
+    {
+        languages.map { code, fallbackName in
+            TranscriptionLanguageOption(
+                code: code,
+                name: localizedName(for: code, fallback: fallbackName, locale: locale)
+            )
+        }
+        .sorted(by: optionSort)
+    }
+
+    static func popularOptions(from languages: [String: String], locale: Locale = .current)
+        -> [TranscriptionLanguageOption]
+    {
+        var usedCodes = Set<String>()
+        return popularLanguageCodes.compactMap { baseCode in
+            guard let code = bestAvailableCode(for: baseCode, in: languages),
+                usedCodes.insert(code).inserted,
+                let fallbackName = languages[code]
+            else {
+                return nil
+            }
+            return TranscriptionLanguageOption(
+                code: code,
+                name: localizedName(for: code, fallback: fallbackName, locale: locale)
+            )
+        }
+    }
+
+    static func remainingOptions(from languages: [String: String], locale: Locale = .current)
+        -> [TranscriptionLanguageOption]
+    {
+        let popularCodes = Set(popularOptions(from: languages, locale: locale).map(\.code))
+        return allOptions(from: languages, locale: locale).filter { !popularCodes.contains($0.code) }
+    }
+
+    static func recentOptions(from languages: [String: String], locale: Locale = .current)
+        -> [TranscriptionLanguageOption]
+    {
+        recentLanguageCodes.compactMap { code in
+            guard let fallbackName = languages[code] else { return nil }
+            return TranscriptionLanguageOption(
+                code: code,
+                name: localizedName(for: code, fallback: fallbackName, locale: locale)
+            )
+        }
+    }
+
+    static func recordSelection(_ code: String) {
+        var codes = recentLanguageCodes.filter { $0 != code }
+        codes.insert(code, at: 0)
+        UserDefaults.standard.set(
+            Array(codes.prefix(maximumRecentLanguageCount)),
+            forKey: recentLanguagesKey
+        )
+    }
+
+    static func localizedName(
+        for code: String,
+        fallback: String,
+        locale: Locale = .current
+    ) -> String {
+        guard code != "auto" else { return String(localized: "Auto-detect") }
+
+        let canonicalCode = code.replacingOccurrences(of: "_", with: "-")
+        return locale.localizedString(forIdentifier: canonicalCode)
+            ?? locale.localizedString(forLanguageCode: canonicalCode.split(separator: "-").first.map(String.init) ?? canonicalCode)
+            ?? fallback
+    }
+
+    private static var recentLanguageCodes: [String] {
+        UserDefaults.standard.stringArray(forKey: recentLanguagesKey) ?? []
+    }
+
+    private static func bestAvailableCode(for baseCode: String, in languages: [String: String]) -> String? {
+        if languages[baseCode] != nil { return baseCode }
+
+        if let preferredCode = preferredRegionalCodes[baseCode]?.first(where: { languages[$0] != nil }) {
+            return preferredCode
+        }
+
+        return languages.keys.sorted().first {
+            $0.lowercased().hasPrefix(baseCode.lowercased() + "-")
+        }
+    }
+
+    private static func optionSort(
+        _ lhs: TranscriptionLanguageOption,
+        _ rhs: TranscriptionLanguageOption
+    ) -> Bool {
+        if lhs.code == "auto" { return true }
+        if rhs.code == "auto" { return false }
+        return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+    }
+}
+
 enum LanguageDictionary {
     private static let whisperLanguageCodes: Set<String> = [
         "auto",

@@ -20,6 +20,7 @@ struct LocalVoiceApp: App {
     @StateObject private var mainWindowNavigation = MainWindowNavigation()
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
+    @StateObject private var purchaseManager = PurchaseManager.shared
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @State private var showMenuBarIcon = true
@@ -305,6 +306,7 @@ struct LocalVoiceApp: App {
                         .environmentObject(mainWindowNavigation)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
+                        .environmentObject(purchaseManager)
                         .modelContainer(container)
                         .onAppear {
                             showAccessibilityReminderIfNeeded()
@@ -327,7 +329,7 @@ struct LocalVoiceApp: App {
                                 )
                                 NotificationCenter.default.post(
                                     name: .navigateToDestination, object: nil,
-                                    userInfo: ["destination": "Transcribe Audio"])
+                                    userInfo: ["destination": "Meetings"])
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     NotificationCenter.default.post(
                                         name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
@@ -353,6 +355,7 @@ struct LocalVoiceApp: App {
                         .environmentObject(transcriptionModelManager)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
+                        .environmentObject(purchaseManager)
                         .frame(width: AppWindowLayout.width)
                         .frame(minHeight: AppWindowLayout.minimumHeight)
                         .background(
@@ -368,7 +371,7 @@ struct LocalVoiceApp: App {
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
-
+            MainWindowCommands()
         }
 
         #if DEBUG
@@ -397,6 +400,22 @@ struct LocalVoiceApp: App {
     private static func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+private struct MainWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            Button("Open Local Voice") {
+                AppPresentationPolicy.activateForUserFacingWindow(reason: "WindowMenu")
+                WindowManager.shared.prepareForUserRequestedMainWindow()
+                openWindow(id: AppWindowID.main)
+                WindowManager.shared.showMainWindow()
+            }
+            .keyboardShortcut("0", modifiers: [.command])
         }
     }
 }

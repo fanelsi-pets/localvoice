@@ -325,6 +325,13 @@ class WhisperModelManager: ObservableObject {
 
     func deleteModel(_ model: WhisperModelFile) async {
         do {
+            if loadedWhisperModel?.name == model.name {
+                await whisperContext?.releaseResources()
+                whisperContext = nil
+                loadedWhisperModel = nil
+                isModelLoaded = false
+            }
+
             try FileManager.default.removeItem(at: model.url)
 
             if let coreMLURL = model.coreMLEncoderURL {

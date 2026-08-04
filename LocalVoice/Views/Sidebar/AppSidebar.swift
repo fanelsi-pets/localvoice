@@ -3,6 +3,7 @@ import SwiftUI
 struct AppSidebar: View {
     @Binding var selectedView: ViewType
     @StateObject private var updateService = GitHubUpdateService.shared
+    @EnvironmentObject private var purchaseManager: PurchaseManager
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -24,7 +25,15 @@ struct AppSidebar: View {
 
             Spacer(minLength: 16)
 
-            if let release = updateService.availableRelease {
+            if AppDistribution.isAppStore {
+                purchaseStatus
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 6)
+            }
+
+            if AppDistribution.allowsExternalUpdates,
+                let release = updateService.availableRelease
+            {
                 updateButton(for: release)
                     .padding(.horizontal, 10)
                     .padding(.bottom, 6)
@@ -34,6 +43,71 @@ struct AppSidebar: View {
                 .padding(.bottom, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var purchaseStatus: some View {
+        Button {
+            NotificationCenter.default.post(name: .localVoicePurchaseRequired, object: nil)
+        } label: {
+            HStack(spacing: 9) {
+                SidebarIconTile(
+                    systemName: purchaseIcon,
+                    style: .init(background: AppTheme.Accent.primary)
+                )
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(purchaseTitle)
+                        .font(.system(size: 12.5, weight: .semibold))
+                    Text(purchaseSubtitle)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 42)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppTheme.Accent.fill.opacity(0.65), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var purchaseIcon: String {
+        switch purchaseManager.accessState {
+        case .trial: return "clock.fill"
+        case .expired: return "lock.fill"
+        case .lifetime, .unrestrictedDistribution: return "checkmark.seal.fill"
+        case .loading: return "ellipsis"
+        }
+    }
+
+    private var purchaseTitle: LocalizedStringKey {
+        switch purchaseManager.accessState {
+        case .trial: return "Free trial"
+        case .expired: return "Unlock LocalVoice"
+        case .lifetime, .unrestrictedDistribution: return "Lifetime access"
+        case .loading: return "Checking purchase…"
+        }
+    }
+
+    private var purchaseSubtitle: String {
+        switch purchaseManager.accessState {
+        case .trial(let daysRemaining, _):
+            return String(
+                format: String(localized: "%lld days left · %@ once"),
+                daysRemaining,
+                purchaseManager.displayPrice
+            )
+        case .expired:
+            return String(
+                format: String(localized: "%@ once · yours forever"),
+                purchaseManager.displayPrice
+            )
+        case .lifetime, .unrestrictedDistribution:
+            return String(localized: "Yours forever")
+        case .loading:
+            return String(localized: "App Store")
+        }
     }
 
     private func updateButton(for release: GitHubUpdateService.Release) -> some View {
@@ -101,8 +175,8 @@ struct AppSidebar: View {
 private extension ViewType {
     var title: LocalizedStringKey {
         switch self {
-        case .transcribeAudio:
-            return "Transcribe"
+        case .meetings:
+            return "Meetings"
         default:
             return LocalizedStringKey(rawValue)
         }
@@ -111,7 +185,7 @@ private extension ViewType {
     static let primaryItems: [ViewType] = [
         .dashboard,
         .modes,
-        .transcribeAudio,
+        .meetings,
         .history,
         .dictionary,
         .models,
@@ -132,7 +206,7 @@ private extension ViewType {
     var icon: String {
         switch self {
         case .dashboard: return "gauge.medium"
-        case .transcribeAudio: return "waveform.path"
+        case .meetings: return "person.2.wave.2.fill"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"
@@ -156,8 +230,8 @@ private extension ViewType {
             return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
             return .init(background: AppTheme.Sidebar.audio)
-        case .transcribeAudio:
-            return .init(background: AppTheme.Sidebar.transcribeAudio)
+        case .meetings:
+            return .init(background: AppTheme.Sidebar.modes)
         case .settings:
             return .init(background: AppTheme.Sidebar.fallback)
         }

@@ -85,6 +85,16 @@ private struct TrustBody: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 610)
+
+                if AppDistribution.isAppStore {
+                    Label("7 days free. Then $4.99 once — yours forever. No subscription.", systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.Accent.primary)
+                        .padding(.horizontal, 16)
+                        .frame(height: 38)
+                        .background(AppTheme.Accent.fill, in: Capsule())
+                        .padding(.top, 8)
+                }
             }
         }
     }

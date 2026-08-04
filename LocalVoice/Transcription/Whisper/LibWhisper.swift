@@ -110,6 +110,25 @@ actor WhisperContext {
         return transcription
     }
 
+    /// Returns Whisper's native segments with 10 ms timestamps preserved.
+    /// The regular dictation pipeline intentionally flattens these into a string,
+    /// while meeting transcription needs the timing to align text with speakers.
+    func getTimedSegments() -> [WhisperTimedSegment] {
+        guard let context = context else { return [] }
+
+        return (0..<whisper_full_n_segments(context)).compactMap { index in
+            let text = String(cString: whisper_full_get_segment_text(context, index))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+
+            return WhisperTimedSegment(
+                startTime: Double(whisper_full_get_segment_t0(context, index)) / 100.0,
+                endTime: Double(whisper_full_get_segment_t1(context, index)) / 100.0,
+                text: text
+            )
+        }
+    }
+
     static func createContext(path: String) async throws -> WhisperContext {
         let whisperContext = WhisperContext()
         try await whisperContext.initializeModel(path: path)
@@ -161,6 +180,20 @@ actor WhisperContext {
 
     func setLanguage(_ language: String?) {
         self.language = language
+    }
+}
+
+struct WhisperTimedSegment: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    let startTime: TimeInterval
+    let endTime: TimeInterval
+    let text: String
+
+    init(id: UUID = UUID(), startTime: TimeInterval, endTime: TimeInterval, text: String) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.text = text
     }
 }
 
