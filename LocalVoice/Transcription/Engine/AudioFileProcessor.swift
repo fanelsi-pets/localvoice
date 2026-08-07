@@ -44,7 +44,7 @@ class AudioProcessor {
             // is a more resilient fallback for media containers and delivers
             // target LPCM directly, avoiding manual seeking and conversion.
             logger.warning(
-                "AVAudioFile pipeline failed for \(url.lastPathComponent, privacy: .public): \(error, privacy: .public). Falling back to AVAssetReader."
+                "AVAudioFile pipeline failed for \(url.lastPathComponent, privacy: .private(mask: .hash)): \(error, privacy: .public). Falling back to AVAssetReader."
             )
             return try await readUsingAssetReader(url)
         }
