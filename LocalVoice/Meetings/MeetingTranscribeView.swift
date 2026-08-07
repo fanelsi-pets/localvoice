@@ -68,8 +68,6 @@ struct MeetingTranscribeView: View {
                 session.detectedSpeakerNames[speakerID] = ""
             }
         }
-        // Meetings intentionally has its own picker and drop target; shared file-opening
-        // notifications continue to belong exclusively to the existing Transcribe Audio screen.
         .onDrop(of: [.fileURL, .audio, .movie], isTargeted: $isDropTargeted, perform: handleDrop)
         .onDisappear {
             playerController.pause()

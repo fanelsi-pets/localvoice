@@ -5,7 +5,6 @@ enum ViewType: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case modes = "Modes"
     case models = "AI Models"
-    case transcribeAudio = "Transcribe Audio"
     case meetings = "Meetings"
     case history = "History"
     case audio = "Audio"
@@ -68,6 +67,22 @@ struct ContentView: View {
                 navigation.navigate(to: destination)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openFileInMeetings)) { notification in
+            guard let url = notification.userInfo?["url"] as? URL,
+                SupportedMedia.isSupported(url: url)
+            else { return }
+
+            meetingManager.reset()
+            meetingPlayerController.cleanup()
+            meetingSession.clearRecordingInputs()
+            navigation.navigate(to: ViewType.meetings.rawValue)
+
+            // Publish the URL on the next main-loop turn so the Meetings view is
+            // mounted before it starts loading the externally opened recording.
+            DispatchQueue.main.async {
+                meetingSession.sourceURL = url
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await GitHubUpdateService.shared.checkForUpdates() }
         }
@@ -100,8 +115,6 @@ struct ContentView: View {
             DashboardView()
         case .models:
             ModelManagementView()
-        case .transcribeAudio:
-            AudioTranscribeView()
         case .meetings:
             MeetingTranscribeView(
                 manager: meetingManager,

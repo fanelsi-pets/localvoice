@@ -325,12 +325,9 @@ struct LocalVoiceApp: App {
                                 Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow").notice(
                                     "🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))"
                                 )
-                                NotificationCenter.default.post(
-                                    name: .navigateToDestination, object: nil,
-                                    userInfo: ["destination": "Transcribe Audio"])
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     NotificationCenter.default.post(
-                                        name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
+                                        name: .openFileInMeetings, object: nil, userInfo: ["url": pendingURL])
                                 }
                                 appDelegate.pendingOpenFileURL = nil
                             }

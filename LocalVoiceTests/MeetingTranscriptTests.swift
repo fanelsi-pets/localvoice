@@ -3,22 +3,20 @@ import Testing
 @testable import LocalVoice
 
 struct MeetingTranscriptTests {
-    @Test func exposesMeetingsAlongsideStandardFileTranscription() {
+    @Test func exposesMeetingsAsTheOnlyFileTranscriptionDestination() {
         let destinations = ViewType.allCases.map(\.rawValue)
         let sidebarDestinations = ViewType.primaryItems
 
-        #expect(destinations.contains("Transcribe Audio"))
         #expect(destinations.contains("Meetings"))
-        #expect(sidebarDestinations.contains(.transcribeAudio))
+        #expect(!destinations.contains("Transcribe Audio"))
         #expect(sidebarDestinations.contains(.meetings))
-        #expect(ViewType.transcribeAudio != ViewType.meetings)
     }
 
-    @Test func navigationCanSelectBothTranscriptionDestinations() {
+    @Test func navigationSelectsMeetingsAndRejectsRemovedTranscribeDestination() {
         let navigation = MainWindowNavigation()
 
-        navigation.navigate(to: ViewType.transcribeAudio.rawValue)
-        #expect(navigation.selectedView == .transcribeAudio)
+        navigation.navigate(to: "Transcribe Audio")
+        #expect(navigation.selectedView == .dashboard)
 
         navigation.navigate(to: ViewType.meetings.rawValue)
         #expect(navigation.selectedView == .meetings)
