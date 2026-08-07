@@ -29,11 +29,16 @@ actor WhisperContext {
         }
     }
 
-    func fullTranscribe(samples: [Float]) -> Bool {
+    func fullTranscribe(
+        samples: [Float],
+        onProgress: (@Sendable (Double) -> Void)? = nil,
+        control: WhisperTranscriptionControl? = nil
+    ) -> Bool {
         guard let context = context else { return false }
 
         let maxThreads = max(1, min(8, cpuCount() - 2))
         var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
+        let callbackBox = WhisperCallbackBox(onProgress: onProgress, control: control)
 
         let selectedLanguage = language ?? "auto"
         if selectedLanguage != "auto" {
@@ -66,6 +71,22 @@ actor WhisperContext {
         params.no_context = true
         params.single_segment = false
         params.temperature = 0.2
+        if onProgress != nil {
+            params.progress_callback = { _, _, progress, userData in
+                guard let userData else { return }
+                let box = Unmanaged<WhisperCallbackBox>.fromOpaque(userData).takeUnretainedValue()
+                box.report(progress: progress)
+            }
+            params.progress_callback_user_data = Unmanaged.passUnretained(callbackBox).toOpaque()
+        }
+        if control != nil {
+            params.abort_callback = { userData in
+                guard let userData else { return false }
+                let box = Unmanaged<WhisperCallbackBox>.fromOpaque(userData).takeUnretainedValue()
+                return box.shouldAbort
+            }
+            params.abort_callback_user_data = Unmanaged.passUnretained(callbackBox).toOpaque()
+        }
 
         whisper_reset_timings(context)
 
@@ -88,10 +109,12 @@ actor WhisperContext {
         }
 
         var success = true
-        samples.withUnsafeBufferPointer { samplesBuffer in
-            if whisper_full(context, params, samplesBuffer.baseAddress, Int32(samplesBuffer.count)) != 0 {
-                logger.error("❌ Failed to run whisper_full. VAD enabled: \(params.vad, privacy: .public)")
-                success = false
+        withExtendedLifetime(callbackBox) {
+            samples.withUnsafeBufferPointer { samplesBuffer in
+                if whisper_full(context, params, samplesBuffer.baseAddress, Int32(samplesBuffer.count)) != 0 {
+                    logger.error("❌ Failed to run whisper_full. VAD enabled: \(params.vad, privacy: .public)")
+                    success = false
+                }
             }
         }
 
@@ -108,6 +131,25 @@ actor WhisperContext {
             transcription += String(cString: whisper_full_get_segment_text(context, i))
         }
         return transcription
+    }
+
+    /// Returns Whisper's native segments with 10 ms timestamps preserved.
+    /// The regular dictation pipeline intentionally flattens these into a string,
+    /// while meeting transcription needs the timing to align text with speakers.
+    func getTimedSegments() -> [WhisperTimedSegment] {
+        guard let context = context else { return [] }
+
+        return (0..<whisper_full_n_segments(context)).compactMap { index in
+            let text = String(cString: whisper_full_get_segment_text(context, index))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+
+            return WhisperTimedSegment(
+                startTime: Double(whisper_full_get_segment_t0(context, index)) / 100.0,
+                endTime: Double(whisper_full_get_segment_t1(context, index)) / 100.0,
+                text: text
+            )
+        }
     }
 
     static func createContext(path: String) async throws -> WhisperContext {
@@ -161,6 +203,62 @@ actor WhisperContext {
 
     func setLanguage(_ language: String?) {
         self.language = language
+    }
+}
+
+/// A thread-safe cancellation handle for a synchronous whisper.cpp inference.
+///
+/// Cancelling the surrounding Swift task alone cannot interrupt native inference,
+/// so meeting transcription passes this handle to whisper.cpp's abort callback.
+final class WhisperTranscriptionControl: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+}
+
+private final class WhisperCallbackBox: @unchecked Sendable {
+    private let onProgress: (@Sendable (Double) -> Void)?
+    private let control: WhisperTranscriptionControl?
+
+    init(
+        onProgress: (@Sendable (Double) -> Void)?,
+        control: WhisperTranscriptionControl?
+    ) {
+        self.onProgress = onProgress
+        self.control = control
+    }
+
+    func report(progress: Int32) {
+        onProgress?(min(1, max(0, Double(progress) / 100)))
+    }
+
+    var shouldAbort: Bool {
+        control?.isCancelled ?? false
+    }
+}
+
+struct WhisperTimedSegment: Identifiable, Codable, Hashable, Sendable {
+    let id: UUID
+    let startTime: TimeInterval
+    let endTime: TimeInterval
+    let text: String
+
+    init(id: UUID = UUID(), startTime: TimeInterval, endTime: TimeInterval, text: String) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.text = text
     }
 }
 

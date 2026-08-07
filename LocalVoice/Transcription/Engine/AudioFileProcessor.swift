@@ -71,11 +71,15 @@ class AudioProcessor {
             throw AudioProcessingError.unsupportedFormat
         }
 
-        let chunkSize: AVAudioFrameCount = 50_000_000
+        // Keep peak memory bounded for long meeting recordings and provide regular
+        // cancellation points. Five million source frames are roughly 104 seconds
+        // at 48 kHz, rather than allocating one enormous buffer for most of a call.
+        let chunkSize: AVAudioFrameCount = 5_000_000
         var allSamples: [Float] = []
         var currentFrame: AVAudioFramePosition = 0
 
         while currentFrame < totalFrames {
+            try Task.checkCancellation()
             let remainingFrames = totalFrames - currentFrame
             let framesToRead = min(chunkSize, AVAudioFrameCount(remainingFrames))
 
@@ -125,8 +129,14 @@ class AudioProcessor {
             }
 
             currentFrame += AVAudioFramePosition(framesToRead)
+            try Task.checkCancellation()
         }
 
+        // Normalize once across the complete recording. Normalizing each chunk
+        // independently changes the relative loudness between quiet and loud
+        // sections and can alter the standard file-transcription result when a
+        // recording spans more than one chunk.
+        try normalizeSamples(&allSamples)
         return allSamples
     }
 
@@ -199,12 +209,9 @@ class AudioProcessor {
             throw AudioProcessingError.sampleExtractionFailed
         }
 
-        // Keep the fallback output in the same normalized Float range expected
-        // by the WAV export path.
-        let maxSample = samples.map(abs).max() ?? 1
-        if maxSample > 0 {
-            samples = samples.map { $0 / maxSample }
-        }
+        // Keep the fallback output in the same globally normalized Float range
+        // as the primary AVAudioFile path.
+        try normalizeSamples(&samples)
         return samples
     }
 
@@ -257,14 +264,30 @@ class AudioProcessor {
             }
         }
 
-        let maxSample = samples.map(abs).max() ?? 1
-        if maxSample > 0 {
-            samples = samples.map { $0 / maxSample }
-        }
-
         return samples
     }
+
+    private func normalizeSamples(_ samples: inout [Float]) throws {
+        var maxSample: Float = 0
+        for (index, sample) in samples.enumerated() {
+            if index.isMultiple(of: 65_536) {
+                try Task.checkCancellation()
+            }
+            maxSample = max(maxSample, abs(sample))
+        }
+
+        guard maxSample > 0 else { return }
+
+        for index in samples.indices {
+            if index.isMultiple(of: 65_536) {
+                try Task.checkCancellation()
+            }
+            samples[index] /= maxSample
+        }
+    }
+
     func saveSamplesAsWav(samples: [Float], to url: URL) throws {
+        try Task.checkCancellation()
         let outputFormat = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
             sampleRate: AudioFormat.targetSampleRate,
@@ -285,8 +308,16 @@ class AudioProcessor {
             throw AudioProcessingError.conversionFailed
         }
 
-        // Convert float samples to int16
-        let int16Samples = samples.map { max(-1.0, min(1.0, $0)) * Float(Int16.max) }.map { Int16($0) }
+        // Convert in one pass and periodically observe cancellation. The previous
+        // pair of map operations held two extra full-length arrays for long files.
+        var int16Samples = [Int16]()
+        int16Samples.reserveCapacity(samples.count)
+        for (index, sample) in samples.enumerated() {
+            if index.isMultiple(of: 65_536) {
+                try Task.checkCancellation()
+            }
+            int16Samples.append(Int16(max(-1.0, min(1.0, sample)) * Float(Int16.max)))
+        }
 
         // Copy samples to buffer
         int16Samples.withUnsafeBufferPointer { int16Buffer in

@@ -98,20 +98,12 @@ struct AppSidebar: View {
     }
 }
 
-private extension ViewType {
-    var title: LocalizedStringKey {
-        switch self {
-        case .transcribeAudio:
-            return "Transcribe"
-        default:
-            return LocalizedStringKey(rawValue)
-        }
-    }
-
+extension ViewType {
     static let primaryItems: [ViewType] = [
         .dashboard,
         .modes,
         .transcribeAudio,
+        .meetings,
         .history,
         .dictionary,
         .models,
@@ -128,11 +120,25 @@ private extension ViewType {
             assert(Set(sidebarItems) == Set(allCases) && sidebarItems.count == allCases.count)
         #endif
     }
+}
+
+private extension ViewType {
+    var title: LocalizedStringKey {
+        switch self {
+        case .transcribeAudio:
+            return "Transcribe"
+        case .meetings:
+            return "Meetings"
+        default:
+            return LocalizedStringKey(rawValue)
+        }
+    }
 
     var icon: String {
         switch self {
         case .dashboard: return "gauge.medium"
         case .transcribeAudio: return "waveform.path"
+        case .meetings: return "person.2.wave.2.fill"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"
@@ -158,6 +164,8 @@ private extension ViewType {
             return .init(background: AppTheme.Sidebar.audio)
         case .transcribeAudio:
             return .init(background: AppTheme.Sidebar.transcribeAudio)
+        case .meetings:
+            return .init(background: AppTheme.Sidebar.meetings)
         case .settings:
             return .init(background: AppTheme.Sidebar.fallback)
         }

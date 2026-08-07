@@ -6,6 +6,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     case modes = "Modes"
     case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
+    case meetings = "Meetings"
     case history = "History"
     case audio = "Audio"
     case dictionary = "Dictionary"
@@ -38,6 +39,12 @@ struct ContentView: View {
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
     @EnvironmentObject private var navigation: MainWindowNavigation
+    // Keep the complete meeting workspace owned by the window rather than by the
+    // conditional sidebar destination. Progress, inputs, speaker labels and the
+    // loaded player then survive a temporary visit to another section.
+    @StateObject private var meetingManager = MeetingTranscriptionManager()
+    @StateObject private var meetingSession = MeetingSessionState()
+    @StateObject private var meetingPlayerController = MeetingMediaPlayerController()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -53,6 +60,7 @@ struct ContentView: View {
         }
         .onDisappear {
             logger.notice("ContentView disappeared")
+            meetingPlayerController.cleanup()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
             if let destination = notification.userInfo?["destination"] as? String {
@@ -94,6 +102,12 @@ struct ContentView: View {
             ModelManagementView()
         case .transcribeAudio:
             AudioTranscribeView()
+        case .meetings:
+            MeetingTranscribeView(
+                manager: meetingManager,
+                session: meetingSession,
+                playerController: meetingPlayerController
+            )
         case .history:
             InlineHistoryView()
         case .audio:

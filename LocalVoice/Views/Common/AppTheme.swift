@@ -64,6 +64,7 @@ enum AppTheme {
         static let audio = Color(nsColor: .systemPink)
         static let dictionary = Color(nsColor: .systemBlue)
         static let transcribeAudio = Color(red: 0.86, green: 0.32, blue: 0.27)
+        static let meetings = Color(nsColor: .systemTeal)
         static let fallback = Color(nsColor: .systemGray)
     }
 
