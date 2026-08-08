@@ -5,7 +5,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case modes = "Modes"
     case models = "AI Models"
-    case transcribeAudio = "Transcribe Audio"
+    case meetings = "Meetings"
     case history = "History"
     case audio = "Audio"
     case dictionary = "Dictionary"
@@ -38,6 +38,12 @@ struct ContentView: View {
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
     @EnvironmentObject private var navigation: MainWindowNavigation
+    // Keep the complete meeting workspace owned by the window rather than by the
+    // conditional sidebar destination. Progress, inputs, speaker labels and the
+    // loaded player then survive a temporary visit to another section.
+    @StateObject private var meetingManager = MeetingTranscriptionManager()
+    @StateObject private var meetingSession = MeetingSessionState()
+    @StateObject private var meetingPlayerController = MeetingMediaPlayerController()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -53,11 +59,28 @@ struct ContentView: View {
         }
         .onDisappear {
             logger.notice("ContentView disappeared")
+            meetingPlayerController.cleanup()
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
             if let destination = notification.userInfo?["destination"] as? String {
                 logger.notice("navigateToDestination received: \(destination, privacy: .public)")
                 navigation.navigate(to: destination)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openFileInMeetings)) { notification in
+            guard let url = notification.userInfo?["url"] as? URL,
+                SupportedMedia.isSupported(url: url)
+            else { return }
+
+            meetingManager.reset()
+            meetingPlayerController.cleanup()
+            meetingSession.clearRecordingInputs()
+            navigation.navigate(to: ViewType.meetings.rawValue)
+
+            // Publish the URL on the next main-loop turn so the Meetings view is
+            // mounted before it starts loading the externally opened recording.
+            DispatchQueue.main.async {
+                meetingSession.sourceURL = url
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -92,8 +115,12 @@ struct ContentView: View {
             DashboardView()
         case .models:
             ModelManagementView()
-        case .transcribeAudio:
-            AudioTranscribeView()
+        case .meetings:
+            MeetingTranscribeView(
+                manager: meetingManager,
+                session: meetingSession,
+                playerController: meetingPlayerController
+            )
         case .history:
             InlineHistoryView()
         case .audio:
