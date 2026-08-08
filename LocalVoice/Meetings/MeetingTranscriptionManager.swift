@@ -5,6 +5,15 @@ import OSLog
 
 @MainActor
 final class MeetingTranscriptionManager: ObservableObject {
+    struct SpeakerAnalysisResult: Sendable {
+        let segments: [MeetingSpeakerSegment]
+        let duration: TimeInterval
+    }
+
+    typealias SpeakerAnalysisOperation =
+        (_ sourceURL: URL, _ expectedSpeakerCount: Int?) async throws -> SpeakerAnalysisResult
+    typealias ProcessingOperation = (_ sourceURL: URL) async throws -> MeetingTranscript
+
     enum SpeakerAnalysisStage: Equatable {
         case idle
         case preparingAudio
@@ -86,12 +95,23 @@ final class MeetingTranscriptionManager: ObservableObject {
 
     private var processingTask: Task<Void, Never>?
     private var processingID = UUID()
+    private var activeProcessingID: UUID?
     private var whisperControl: WhisperTranscriptionControl?
     private var speakerAnalysisTask: Task<Void, Never>?
     private var speakerAnalysisID = UUID()
+    private var activeSpeakerAnalysisID: UUID?
+    private var pendingSpeakerAnalysis: PendingSpeakerAnalysis?
     private var cachedAnalysisKey: SpeakerAnalysisKey?
     private var cachedSpeakerSegments: [MeetingSpeakerSegment] = []
+    private let speakerAnalysisOperation: SpeakerAnalysisOperation?
+    private let processingOperation: ProcessingOperation?
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MeetingTranscription")
+
+    private struct PendingSpeakerAnalysis {
+        let sourceURL: URL
+        let expectedSpeakerCount: Int?
+        let force: Bool
+    }
 
     private struct SpeakerAnalysisKey: Equatable {
         let sourcePath: String
@@ -100,24 +120,54 @@ final class MeetingTranscriptionManager: ObservableObject {
         let modificationDate: Date?
     }
 
-    func analyzeSpeakers(sourceURL: URL, expectedSpeakerCount: Int?, force: Bool = false) {
-        // Speaker analysis is intentionally single-flight. FluidAudio performs
-        // native work internally, so a replacement must not start until the
-        // previous task has actually unwound.
-        guard !isProcessing, !isAnalyzingSpeakers else { return }
+    init(
+        speakerAnalysisOperation: SpeakerAnalysisOperation? = nil,
+        processingOperation: ProcessingOperation? = nil
+    ) {
+        self.speakerAnalysisOperation = speakerAnalysisOperation
+        self.processingOperation = processingOperation
+    }
 
+    func analyzeSpeakers(sourceURL: URL, expectedSpeakerCount: Int?, force: Bool = false) {
         let normalizedCount = normalizedSpeakerCount(expectedSpeakerCount)
-        let key = analysisKey(sourceURL: sourceURL, expectedSpeakerCount: normalizedCount)
-        if !force, cachedAnalysisKey == key {
+        let request = PendingSpeakerAnalysis(
+            sourceURL: sourceURL,
+            expectedSpeakerCount: normalizedCount,
+            force: force
+        )
+
+        // FluidAudio and media decoding can continue native work after Swift task
+        // cancellation. Keep at most the latest replacement request and start it
+        // only after the current heavy task has actually returned.
+        guard !isProcessing, !isAnalyzingSpeakers else {
+            pendingSpeakerAnalysis = request
+            if let speakerAnalysisTask {
+                speakerAnalysisID = UUID()
+                speakerAnalysisTask.cancel()
+            }
+            return
+        }
+
+        beginSpeakerAnalysis(request)
+    }
+
+    private func beginSpeakerAnalysis(_ request: PendingSpeakerAnalysis) {
+        precondition(!isProcessing && !isAnalyzingSpeakers)
+
+        let key = analysisKey(
+            sourceURL: request.sourceURL,
+            expectedSpeakerCount: request.expectedSpeakerCount
+        )
+        if !request.force, cachedAnalysisKey == key {
             speakerSegments = cachedSpeakerSegments
             speakerAnalysisStage = .ready(speakerCount: Set(cachedSpeakerSegments.map(\.speakerID)).count)
             isAnalyzingSpeakers = false
             return
         }
 
-        speakerAnalysisTask?.cancel()
         let analysisID = UUID()
         speakerAnalysisID = analysisID
+        activeSpeakerAnalysisID = analysisID
         cachedAnalysisKey = nil
         cachedSpeakerSegments = []
         speakerSegments = []
@@ -128,34 +178,29 @@ final class MeetingTranscriptionManager: ObservableObject {
         speakerAnalysisTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.performSpeakerAnalysis(
-                    sourceURL: sourceURL,
-                    expectedSpeakerCount: normalizedCount,
-                    analysisID: analysisID
-                )
+                let result: SpeakerAnalysisResult
+                if let speakerAnalysisOperation = self.speakerAnalysisOperation {
+                    result = try await speakerAnalysisOperation(
+                        request.sourceURL,
+                        request.expectedSpeakerCount
+                    )
+                } else {
+                    result = try await self.performSpeakerAnalysis(
+                        sourceURL: request.sourceURL,
+                        expectedSpeakerCount: request.expectedSpeakerCount,
+                        analysisID: analysisID
+                    )
+                }
                 try Task.checkCancellation()
-                guard self.speakerAnalysisID == analysisID else { return }
-
-                self.cachedAnalysisKey = key
-                self.cachedSpeakerSegments = result.segments
-                self.speakerSegments = result.segments
-                self.speakerAnalysisDuration = result.duration
-                self.speakerAnalysisStage = .ready(
-                    speakerCount: Set(result.segments.map(\.speakerID)).count
-                )
-                self.isAnalyzingSpeakers = false
-                self.speakerAnalysisTask = nil
+                self.finishSpeakerAnalysis(analysisID: analysisID, key: key, result: result)
             } catch is CancellationError {
-                guard self.speakerAnalysisID == analysisID else { return }
-                self.speakerAnalysisStage = .idle
-                self.isAnalyzingSpeakers = false
-                self.speakerAnalysisTask = nil
+                self.finishSpeakerAnalysis(analysisID: analysisID, key: key)
             } catch {
-                guard self.speakerAnalysisID == analysisID else { return }
-                self.logger.error("Meeting speaker analysis failed: \(error, privacy: .public)")
-                self.speakerAnalysisStage = .failed(error.localizedDescription)
-                self.isAnalyzingSpeakers = false
-                self.speakerAnalysisTask = nil
+                self.finishSpeakerAnalysis(
+                    analysisID: analysisID,
+                    key: key,
+                    error: Task.isCancelled ? nil : error
+                )
             }
         }
     }
@@ -171,10 +216,11 @@ final class MeetingTranscriptionManager: ObservableObject {
         aiService: AIService? = nil
     ) {
         guard !isProcessing, !isAnalyzingSpeakers else { return }
-        stopSpeakerAnalysis(clearResults: false)
+        pendingSpeakerAnalysis = nil
         let generationID = UUID()
         let control = WhisperTranscriptionControl()
         processingID = generationID
+        activeProcessingID = generationID
         whisperControl = control
         isProcessing = true
         transcript = nil
@@ -185,56 +231,58 @@ final class MeetingTranscriptionManager: ObservableObject {
         processingTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.process(
-                    sourceURL: sourceURL,
-                    whisperModel: whisperModel,
-                    language: language,
-                    expectedSpeakerCount: expectedSpeakerCount,
-                    anchors: anchors,
-                    insightConfiguration: insightConfiguration,
-                    aiService: aiService,
-                    generationID: generationID,
-                    whisperControl: control
-                )
+                let result: MeetingTranscript
+                if let processingOperation = self.processingOperation {
+                    result = try await processingOperation(sourceURL)
+                } else {
+                    result = try await self.process(
+                        sourceURL: sourceURL,
+                        whisperModel: whisperModel,
+                        language: language,
+                        expectedSpeakerCount: expectedSpeakerCount,
+                        anchors: anchors,
+                        insightConfiguration: insightConfiguration,
+                        aiService: aiService,
+                        generationID: generationID,
+                        whisperControl: control
+                    )
+                }
                 try Task.checkCancellation()
-                guard self.processingID == generationID else { return }
+                guard self.processingID == generationID else { throw CancellationError() }
                 let savedDirectory = try MeetingTranscriptStore.save(result)
                 try Task.checkCancellation()
-                guard self.processingID == generationID else { return }
-                self.transcript = result
-                self.savedTranscriptDirectory = savedDirectory
-                self.stage = .completed
-                self.isProcessing = false
-                self.processingTask = nil
-                self.whisperControl = nil
+                self.finishProcessing(
+                    generationID: generationID,
+                    result: result,
+                    savedDirectory: savedDirectory
+                )
             } catch is CancellationError {
-                guard self.processingID == generationID else { return }
-                self.stage = .idle
-                self.isProcessing = false
-                self.processingTask = nil
-                self.whisperControl = nil
+                self.finishProcessing(generationID: generationID)
             } catch {
-                guard self.processingID == generationID else { return }
-                self.logger.error("Meeting transcription failed: \(error, privacy: .public)")
-                self.stage = .failed(error.localizedDescription)
-                self.isProcessing = false
-                self.processingTask = nil
-                self.whisperControl = nil
+                self.finishProcessing(
+                    generationID: generationID,
+                    error: Task.isCancelled ? nil : error
+                )
             }
         }
     }
 
     func cancel() {
+        guard let processingTask else {
+            if !isProcessing { stage = .idle }
+            return
+        }
+
+        // Do not publish idle (or discard the task handle) until the operation
+        // has really unwound. FluidAudio/Whisper may need time to return from
+        // native code after receiving cancellation.
         processingID = UUID()
         whisperControl?.cancel()
-        whisperControl = nil
-        processingTask?.cancel()
-        processingTask = nil
-        isProcessing = false
-        stage = .idle
+        processingTask.cancel()
     }
 
     func reset() {
+        pendingSpeakerAnalysis = nil
         cancel()
         stopSpeakerAnalysis(clearResults: true)
         transcript = nil
@@ -243,8 +291,11 @@ final class MeetingTranscriptionManager: ObservableObject {
     }
 
     func cancelSpeakerAnalysis() {
-        // Keep the busy flag set until native work has really returned. A quick
-        // sidebar round-trip therefore cannot launch an overlapping analysis.
+        pendingSpeakerAnalysis = nil
+        // Keep the busy flag set until native work has really returned.
+        if speakerAnalysisTask != nil {
+            speakerAnalysisID = UUID()
+        }
         speakerAnalysisTask?.cancel()
     }
 
@@ -400,11 +451,81 @@ final class MeetingTranscriptionManager: ObservableObject {
         stage = newStage
     }
 
+    private func finishProcessing(
+        generationID: UUID,
+        result: MeetingTranscript? = nil,
+        savedDirectory: URL? = nil,
+        error: Error? = nil
+    ) {
+        guard activeProcessingID == generationID else { return }
+
+        processingTask = nil
+        activeProcessingID = nil
+        whisperControl = nil
+        isProcessing = false
+
+        if processingID != generationID {
+            stage = .idle
+        } else if let result {
+            transcript = result
+            savedTranscriptDirectory = savedDirectory
+            stage = .completed
+        } else if let error {
+            logger.error("Meeting transcription failed: \(error, privacy: .public)")
+            stage = .failed(error.localizedDescription)
+        } else {
+            stage = .idle
+        }
+
+        startPendingSpeakerAnalysisIfPossible()
+    }
+
+    private func finishSpeakerAnalysis(
+        analysisID: UUID,
+        key: SpeakerAnalysisKey,
+        result: SpeakerAnalysisResult? = nil,
+        error: Error? = nil
+    ) {
+        guard activeSpeakerAnalysisID == analysisID else { return }
+
+        speakerAnalysisTask = nil
+        activeSpeakerAnalysisID = nil
+        isAnalyzingSpeakers = false
+
+        if speakerAnalysisID != analysisID {
+            speakerAnalysisStage = .idle
+        } else if let result {
+            cachedAnalysisKey = key
+            cachedSpeakerSegments = result.segments
+            speakerSegments = result.segments
+            speakerAnalysisDuration = result.duration
+            speakerAnalysisStage = .ready(
+                speakerCount: Set(result.segments.map(\.speakerID)).count
+            )
+        } else if let error {
+            logger.error("Meeting speaker analysis failed: \(error, privacy: .public)")
+            speakerAnalysisStage = .failed(error.localizedDescription)
+        } else {
+            speakerAnalysisStage = .idle
+        }
+
+        startPendingSpeakerAnalysisIfPossible()
+    }
+
+    private func startPendingSpeakerAnalysisIfPossible() {
+        guard !isProcessing, !isAnalyzingSpeakers,
+            let request = pendingSpeakerAnalysis
+        else { return }
+
+        pendingSpeakerAnalysis = nil
+        beginSpeakerAnalysis(request)
+    }
+
     private func performSpeakerAnalysis(
         sourceURL: URL,
         expectedSpeakerCount: Int?,
         analysisID: UUID
-    ) async throws -> (segments: [MeetingSpeakerSegment], duration: TimeInterval) {
+    ) async throws -> SpeakerAnalysisResult {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
         defer { if accessing { sourceURL.stopAccessingSecurityScopedResource() } }
 
@@ -445,7 +566,7 @@ final class MeetingTranscriptionManager: ObservableObject {
                 endTime: TimeInterval($0.endTimeSeconds)
             )
         }
-        return (segments, duration)
+        return SpeakerAnalysisResult(segments: segments, duration: duration)
     }
 
     /// Runs the synchronous parts of media decoding away from the main actor while
@@ -473,20 +594,26 @@ final class MeetingTranscriptionManager: ObservableObject {
     }
 
     private func stopSpeakerAnalysis(clearResults: Bool) {
-        speakerAnalysisID = UUID()
-        speakerAnalysisTask?.cancel()
-        speakerAnalysisTask = nil
-        isAnalyzingSpeakers = false
-
         if clearResults {
-            speakerAnalysisStage = .idle
             speakerSegments = []
             speakerAnalysisDuration = 0
             cachedAnalysisKey = nil
             cachedSpeakerSegments = []
-        } else if cachedAnalysisKey == nil {
-            speakerAnalysisStage = .idle
         }
+
+        guard let speakerAnalysisTask else {
+            isAnalyzingSpeakers = false
+            if clearResults || cachedAnalysisKey == nil {
+                speakerAnalysisStage = .idle
+            }
+            return
+        }
+
+        // Retain the task and busy flag until native work returns. The task's
+        // completion path is solely responsible for publishing idle and running
+        // a queued replacement.
+        speakerAnalysisID = UUID()
+        speakerAnalysisTask.cancel()
     }
 
     private func analysisKey(sourceURL: URL, expectedSpeakerCount: Int?) -> SpeakerAnalysisKey {
