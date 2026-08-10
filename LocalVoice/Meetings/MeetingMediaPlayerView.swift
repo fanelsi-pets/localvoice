@@ -29,11 +29,6 @@ final class MeetingMediaPlayerController: ObservableObject {
 
         let asset = AVURLAsset(url: url)
         player.replaceCurrentItem(with: AVPlayerItem(asset: asset))
-        // Keep polling while a file is loaded, not only after our custom Play
-        // button is used. VideoPlayer's native transport controls operate on the
-        // same AVPlayer directly, so this is what keeps anchors synchronized when
-        // the user plays or seeks inside a Zoom MP4/MOV view.
-        startTimer()
         loadTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -66,7 +61,7 @@ final class MeetingMediaPlayerController: ObservableObject {
 
     func pause() {
         player.pause()
-        isPlaying = false
+        stopTimer()
         syncCurrentTime()
     }
 
@@ -135,9 +130,42 @@ final class MeetingMediaPlayerController: ObservableObject {
     private func syncCurrentTime() {
         let seconds = player.currentTime().seconds
         if seconds.isFinite {
-            currentTime = max(0, seconds)
+            let newTime = max(0, seconds)
+            if abs(currentTime - newTime) >= 0.01 {
+                currentTime = newTime
+            }
         }
-        isPlaying = player.rate != 0 || player.timeControlStatus == .playing
+        let newIsPlaying = player.rate != 0 || player.timeControlStatus == .playing
+        if isPlaying != newIsPlaying {
+            isPlaying = newIsPlaying
+        }
+    }
+}
+
+/// SwiftUI's `VideoPlayer` is implemented by the private `_AVKit_SwiftUI`
+/// framework. On some macOS installations that view aborts while resolving its
+/// `AVPlayerView` superclass (before the first video frame is shown). Referencing
+/// `AVPlayerView` directly both avoids that runtime path and makes AVKit an
+/// explicit binary dependency instead of relying on the private bridge.
+private struct MeetingVideoPlayerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context _: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.player = player
+        view.controlsStyle = .none
+        view.videoGravity = .resizeAspect
+        return view
+    }
+
+    func updateNSView(_ view: AVPlayerView, context _: Context) {
+        if view.player !== player {
+            view.player = player
+        }
+    }
+
+    static func dismantleNSView(_ view: AVPlayerView, coordinator _: Void) {
+        view.player = nil
     }
 }
 
@@ -162,7 +190,7 @@ struct MeetingMediaPlayerView: View {
     var body: some View {
         VStack(spacing: 12) {
             if controller.isVideo {
-                VideoPlayer(player: controller.player)
+                MeetingVideoPlayerView(player: controller.player)
                     .frame(minHeight: 220, idealHeight: 280, maxHeight: 340)
                     .background(.black, in: RoundedRectangle(cornerRadius: 10))
                     .clipShape(RoundedRectangle(cornerRadius: 10))

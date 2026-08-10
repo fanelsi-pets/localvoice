@@ -534,8 +534,10 @@ final class MeetingTranscriptionManager: ObservableObject {
             .appendingPathExtension("wav")
         defer { try? FileManager.default.removeItem(at: temporaryURL) }
 
-        let samples = try await prepareAudio(sourceURL: sourceURL, temporaryURL: temporaryURL)
-        let duration = Double(samples.count) / AudioProcessor.AudioFormat.targetSampleRate
+        let duration = try await prepareAudioForSpeakerAnalysis(
+            sourceURL: sourceURL,
+            temporaryURL: temporaryURL
+        )
         try Task.checkCancellation()
         guard speakerAnalysisID == analysisID else { throw CancellationError() }
 
@@ -567,6 +569,34 @@ final class MeetingTranscriptionManager: ObservableObject {
             )
         }
         return SpeakerAnalysisResult(segments: segments, duration: duration)
+    }
+
+    /// Speaker preview needs only a temporary WAV and its duration. Keep the
+    /// decoded Float samples inside the worker so they are released before the
+    /// diarizer loads its models and embeddings. Previously the full sample array
+    /// stayed alive for the whole diarization pass of a long meeting.
+    private func prepareAudioForSpeakerAnalysis(
+        sourceURL: URL,
+        temporaryURL: URL
+    ) async throws -> TimeInterval {
+        let worker = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            let processor = AudioProcessor()
+            let samples = try await processor.processAudioToSamples(sourceURL)
+            try Task.checkCancellation()
+            let duration = Double(samples.count) / AudioProcessor.AudioFormat.targetSampleRate
+            try processor.saveSamplesAsWav(samples: samples, to: temporaryURL)
+            try Task.checkCancellation()
+            return duration
+        }
+
+        return try await withTaskCancellationHandler {
+            let duration = try await worker.value
+            try Task.checkCancellation()
+            return duration
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
     /// Runs the synchronous parts of media decoding away from the main actor while
