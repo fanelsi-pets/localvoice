@@ -76,6 +76,13 @@ class AudioProcessor {
         // at 48 kHz, rather than allocating one enormous buffer for most of a call.
         let chunkSize: AVAudioFrameCount = 5_000_000
         var allSamples: [Float] = []
+        let estimatedOutputFrames = Double(totalFrames) * AudioFormat.targetSampleRate / sampleRate
+        if estimatedOutputFrames.isFinite,
+            estimatedOutputFrames > 0,
+            estimatedOutputFrames <= Double(4 * 60 * 60) * AudioFormat.targetSampleRate
+        {
+            allSamples.reserveCapacity(Int(estimatedOutputFrames.rounded(.up)))
+        }
         var currentFrame: AVAudioFramePosition = 0
 
         while currentFrame < totalFrames {
@@ -87,7 +94,11 @@ class AudioProcessor {
                 throw AudioProcessingError.conversionFailed
             }
 
-            audioFile.framePosition = currentFrame
+            // Reads are already sequential. Seeking an AVAudioFile backed by an
+            // AAC track inside some MP4/Zoom containers raises an Objective-C
+            // NSException instead of a catchable Swift error and aborts the app.
+            // Avoiding the redundant setter lets `read` fail normally so the
+            // caller can use the resilient AVAssetReader fallback.
             try audioFile.read(into: inputBuffer, frameCount: framesToRead)
 
             if sampleRate == AudioFormat.targetSampleRate && channels == AudioFormat.targetChannels {
@@ -171,6 +182,18 @@ class AudioProcessor {
         }
 
         var samples: [Float] = []
+        // Reserve the final PCM size up front. Repeated Array growth briefly kept
+        // both the old and new buffers alive and pushed a 63-minute Zoom file to
+        // ~735 MB RSS even though its final Float payload is ~243 MB.
+        if let duration = try? await asset.load(.duration) {
+            let estimatedSamples = duration.seconds * AudioFormat.targetSampleRate
+            if estimatedSamples.isFinite,
+                estimatedSamples > 0,
+                estimatedSamples <= Double(4 * 60 * 60) * AudioFormat.targetSampleRate
+            {
+                samples.reserveCapacity(Int(estimatedSamples.rounded(.up)))
+            }
+        }
         do {
             while let sampleBuffer = output.copyNextSampleBuffer() {
                 try Task.checkCancellation()
@@ -299,34 +322,6 @@ class AudioProcessor {
             throw AudioProcessingError.unsupportedFormat
         }
 
-        let buffer = AVAudioPCMBuffer(
-            pcmFormat: outputFormat,
-            frameCapacity: AVAudioFrameCount(samples.count)
-        )
-
-        guard let buffer = buffer else {
-            throw AudioProcessingError.conversionFailed
-        }
-
-        // Convert in one pass and periodically observe cancellation. The previous
-        // pair of map operations held two extra full-length arrays for long files.
-        var int16Samples = [Int16]()
-        int16Samples.reserveCapacity(samples.count)
-        for (index, sample) in samples.enumerated() {
-            if index.isMultiple(of: 65_536) {
-                try Task.checkCancellation()
-            }
-            int16Samples.append(Int16(max(-1.0, min(1.0, sample)) * Float(Int16.max)))
-        }
-
-        // Copy samples to buffer
-        int16Samples.withUnsafeBufferPointer { int16Buffer in
-            let int16Pointer = int16Buffer.baseAddress!
-            buffer.int16ChannelData![0].update(from: int16Pointer, count: int16Samples.count)
-        }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-
-        // Create audio file
         let audioFile = try AVAudioFile(
             forWriting: url,
             settings: outputFormat.settings,
@@ -334,6 +329,36 @@ class AudioProcessor {
             interleaved: true
         )
 
-        try audioFile.write(from: buffer)
+        // Write in bounded chunks. A one-hour meeting contains about 61 million
+        // Float samples. Allocating a full Int16 array and a full AVAudioPCMBuffer
+        // alongside it added another ~240 MB on top of the Whisper sample array.
+        // The chunked writer keeps that conversion overhead near 1 MB regardless
+        // of the source video size.
+        let chunkCapacity: AVAudioFrameCount = 262_144
+        var offset = 0
+        while offset < samples.count {
+            try Task.checkCancellation()
+            let count = min(Int(chunkCapacity), samples.count - offset)
+            guard
+                let buffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: chunkCapacity),
+                let destination = buffer.int16ChannelData?[0]
+            else {
+                throw AudioProcessingError.conversionFailed
+            }
+
+            samples.withUnsafeBufferPointer { source in
+                guard let sourceBase = source.baseAddress else { return }
+                for index in 0..<count {
+                    let sample = sourceBase[offset + index]
+                    destination[index] = Int16(
+                        max(-1.0, min(1.0, sample)) * Float(Int16.max)
+                    )
+                }
+            }
+
+            buffer.frameLength = AVAudioFrameCount(count)
+            try audioFile.write(from: buffer)
+            offset += count
+        }
     }
 }
