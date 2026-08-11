@@ -3,12 +3,74 @@ import OSLog
 import SwiftUI
 
 enum AppWindowLayout {
-    static let width: CGFloat = 950
+    static let minimumWidth: CGFloat = 950
     static let minimumHeight: CGFloat = 730
+
+    static func presentationFrame(
+        for visibleScreenFrame: NSRect,
+        styleMask: NSWindow.StyleMask
+    ) -> NSRect? {
+        guard !styleMask.contains(.fullScreen) else { return nil }
+        return visibleScreenFrame
+    }
 }
 
 enum AppWindowID {
     static let main = "main"
+}
+
+/// Keeps SwiftUI's `openWindow` action alive independently of the main window's
+/// view hierarchy. Requests from the Dock, Finder and the status item can then
+/// recreate the scene even after its previous native window was destroyed.
+@MainActor
+final class MainWindowRequestCoordinator: NSObject {
+    static let shared = MainWindowRequestCoordinator()
+
+    private let notificationCenter: NotificationCenter
+    private var openMainWindowAction: (() -> Void)?
+    private var hasPendingRequest = false
+
+    init(notificationCenter: NotificationCenter = .default) {
+        self.notificationCenter = notificationCenter
+        super.init()
+        notificationCenter.addObserver(
+            self,
+            selector: #selector(handleMainWindowRequestNotification(_:)),
+            name: .showMainWindowRequested,
+            object: nil
+        )
+    }
+
+    deinit {
+        notificationCenter.removeObserver(self)
+    }
+
+    func registerOpenMainWindowAction(_ action: @escaping () -> Void) {
+        openMainWindowAction = action
+
+        guard hasPendingRequest else { return }
+        hasPendingRequest = false
+        action()
+    }
+
+    /// Returns `true` when the request was forwarded immediately. Callers that
+    /// can fall back to AppKit's default reopen behavior may opt out of queuing.
+    @discardableResult
+    func requestMainWindow(queueIfUnavailable: Bool = true) -> Bool {
+        guard let openMainWindowAction else {
+            if queueIfUnavailable {
+                hasPendingRequest = true
+            }
+            return false
+        }
+
+        openMainWindowAction()
+        return true
+    }
+
+    @objc private func handleMainWindowRequestNotification(_ notification: Notification) {
+        requestMainWindow()
+    }
 }
 
 enum WindowDiagnostics {
@@ -131,6 +193,7 @@ class WindowManager: NSObject {
     private weak var mainWindow: NSWindow?
     private var didApplyInitialPlacement = false
     private var shouldShowNextConfiguredMainWindow = false
+    private var isApplicationTerminating = false
 
     private override init() {
         super.init()
@@ -143,6 +206,10 @@ class WindowManager: NSObject {
         logger.notice(
             "🧭 Prepared next configured main window for user-requested presentation. menuBarOnly=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
         )
+    }
+
+    func prepareForApplicationTermination() {
+        isApplicationTerminating = true
     }
 
     func configureWindow(_ window: NSWindow) {
@@ -183,8 +250,11 @@ class WindowManager: NSObject {
         window.level = .normal
         window.isOpaque = false
         window.isMovableByWindowBackground = false
-        window.minSize = NSSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
-        window.maxSize = NSSize(width: AppWindowLayout.width, height: CGFloat.greatestFiniteMagnitude)
+        window.minSize = NSSize(width: AppWindowLayout.minimumWidth, height: AppWindowLayout.minimumHeight)
+        window.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
         registerMainWindowIfNeeded(window)
@@ -261,31 +331,13 @@ class WindowManager: NSObject {
 
     private func applyInitialPlacementIfNeeded(to window: NSWindow) {
         guard !didApplyInitialPlacement else { return }
-        // Attempt to restore previous frame if one exists; otherwise fall back to a centered placement
-        if window.setFrameUsingName(Self.mainWindowAutosaveName) {
-            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: true)
-        } else {
-            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: false)
+        // Restore the last screen selection when possible, then fill that screen's
+        // visible work area. This is a maximized normal window, not native full screen.
+        if !window.setFrameUsingName(Self.mainWindowAutosaveName) {
             window.center()
         }
+        fillVisibleScreenIfNeeded(window)
         didApplyInitialPlacement = true
-    }
-
-    private func enforceMainWindowFrameIfNeeded(on window: NSWindow, preserveRestoredOrigin: Bool) {
-        let currentFrame = window.frame
-        guard currentFrame.width != AppWindowLayout.width || currentFrame.height < AppWindowLayout.minimumHeight else {
-            return
-        }
-
-        let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
-        let x = preserveRestoredOrigin ? currentFrame.origin.x : currentFrame.midX - (AppWindowLayout.width / 2)
-        let frame = NSRect(
-            x: x,
-            y: currentFrame.maxY - height,
-            width: AppWindowLayout.width,
-            height: height
-        )
-        window.setFrame(frame, display: true)
     }
 
     private func resolveMainWindow() -> NSWindow? {
@@ -312,6 +364,8 @@ class WindowManager: NSObject {
             window.deminiaturize(nil)
         }
 
+        fillVisibleScreenIfNeeded(window)
+
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -328,9 +382,56 @@ class WindowManager: NSObject {
             )
         }
     }
+
+    private func fillVisibleScreenIfNeeded(_ window: NSWindow) {
+        guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first,
+            let presentationFrame = AppWindowLayout.presentationFrame(
+                for: screen.visibleFrame,
+                styleMask: window.styleMask
+            )
+        else {
+            return
+        }
+
+        guard window.frame != presentationFrame else { return }
+        window.setFrame(presentationFrame, display: true)
+        logger.notice(
+            "🧭 Filled current screen's visible frame before presenting main window. frame=\(NSStringFromRect(presentationFrame), privacy: .public)"
+        )
+    }
 }
 
 extension WindowManager: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard sender.identifier == Self.mainWindowIdentifier else { return true }
+        guard !isApplicationTerminating else { return true }
+        // Let AppKit complete native full-screen teardown normally. The retained
+        // SwiftUI open action can recreate the window after that close.
+        guard !sender.styleMask.contains(.fullScreen) else {
+            logger.notice("🧭 Allowing native full-screen main window to close normally.")
+            return true
+        }
+
+        sender.orderOut(nil)
+        AppPresentationPolicy.restoreAccessoryIfNeededAfterUserFacingWindowClosed(
+            reason: "mainWindowCloseRequested"
+        )
+        logger.notice(
+            "🧭 Main window close request was converted to hide so its SwiftUI scene remains available. window=\(WindowDiagnostics.windowDescription(sender), privacy: .public)"
+        )
+        return false
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+            window.identifier == Self.mainWindowIdentifier
+        else {
+            return
+        }
+
+        fillVisibleScreenIfNeeded(window)
+    }
+
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         if window.identifier == Self.mainWindowIdentifier {

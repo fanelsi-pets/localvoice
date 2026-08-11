@@ -9,6 +9,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     weak var menuBarManager: MenuBarManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Install the notification observer before the status item can emit an
+        // open-window request. Its retained SwiftUI action outlives the window.
+        _ = MainWindowRequestCoordinator.shared
         logger.notice(
             "🧭 Application finished launching. hasMenuBarManager=\((self.menuBarManager != nil), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
         )
@@ -29,9 +32,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             WindowManager.shared.prepareForUserRequestedMainWindow()
-            NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
-            logger.notice("🧭 Dock/app reopen requested main window creation through SwiftUI.")
-            return false
+            let didForwardToSwiftUI = MainWindowRequestCoordinator.shared.requestMainWindow(
+                queueIfUnavailable: false
+            )
+            logger.notice(
+                "🧭 Dock/app reopen requested main window creation. retainedSwiftUIActionAvailable=\(didForwardToSwiftUI, privacy: .public)"
+            )
+            // If SwiftUI has not registered its action yet, let AppKit perform
+            // the normal reopen. That initial scene will then register it.
+            return !didForwardToSwiftUI
         }
 
         logger.notice("🧭 Dock/app reopen left to default handling.")
@@ -40,6 +49,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        WindowManager.shared.prepareForApplicationTermination()
+        return .terminateNow
     }
 
     // Stash URL when app cold-starts to avoid spawning a new window/tab
@@ -69,7 +83,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             logger.notice(
                 "🧭 Stored pending media URL and requested SwiftUI main window. urlLastPath=\(url.lastPathComponent, privacy: .private(mask: .hash))"
             )
-            NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
+            MainWindowRequestCoordinator.shared.requestMainWindow()
         } else {
             // Running: focus the current window and route the media file to Meetings.
             logger.notice(
