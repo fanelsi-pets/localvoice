@@ -350,8 +350,10 @@ struct LocalVoiceApp: App {
                         .environmentObject(transcriptionModelManager)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
-                        .frame(width: AppWindowLayout.width)
-                        .frame(minHeight: AppWindowLayout.minimumHeight)
+                        .frame(
+                            minWidth: AppWindowLayout.minimumWidth,
+                            minHeight: AppWindowLayout.minimumHeight
+                        )
                         .background(
                             WindowAccessor { window in
                                 WindowManager.shared.configureWindow(window)
@@ -361,8 +363,7 @@ struct LocalVoiceApp: App {
             .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
-        .windowResizability(.contentSize)
+        .defaultSize(width: AppWindowLayout.minimumWidth, height: AppWindowLayout.minimumHeight)
         .commands {
             CommandGroup(replacing: .newItem) {}
 
@@ -407,22 +408,28 @@ private struct MainWindowRequestBridge: View {
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
-            .onReceive(NotificationCenter.default.publisher(for: .showMainWindowRequested)) { _ in
-                let existingWindow = WindowManager.shared.currentMainWindow()
-                logger.notice(
-                    "🧭 SwiftUI main-window request bridge received request. hasExistingMainWindow=\((existingWindow != nil), privacy: .public); menuBarOnly=\(self.menuBarManager.isMenuBarOnly, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
-                )
+            .onAppear {
+                let logger = logger
+                let menuBarManager = menuBarManager
+                let openWindow = openWindow
 
-                if existingWindow == nil {
-                    menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgeCreateMainWindow")
-                    WindowManager.shared.prepareForUserRequestedMainWindow()
-                    openWindow(id: AppWindowID.main)
-                    logger.notice("🧭 SwiftUI bridge requested main window creation via openWindow.")
-                } else {
-                    menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgePresentMainWindow")
-                    openWindow(id: AppWindowID.main)
-                    WindowManager.shared.showMainWindow()
-                    logger.notice("🧭 SwiftUI bridge requested existing main window presentation.")
+                MainWindowRequestCoordinator.shared.registerOpenMainWindowAction {
+                    let existingWindow = WindowManager.shared.currentMainWindow()
+                    logger.notice(
+                        "🧭 Persistent SwiftUI main-window action received request. hasExistingMainWindow=\((existingWindow != nil), privacy: .public); menuBarOnly=\(menuBarManager.isMenuBarOnly, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+                    )
+
+                    if existingWindow == nil {
+                        menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgeCreateMainWindow")
+                        WindowManager.shared.prepareForUserRequestedMainWindow()
+                        openWindow(id: AppWindowID.main)
+                        logger.notice("🧭 Persistent SwiftUI action requested main window creation.")
+                    } else {
+                        menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgePresentMainWindow")
+                        openWindow(id: AppWindowID.main)
+                        WindowManager.shared.showMainWindow()
+                        logger.notice("🧭 Persistent SwiftUI action requested existing main window presentation.")
+                    }
                 }
             }
     }

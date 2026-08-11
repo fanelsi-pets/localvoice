@@ -51,8 +51,10 @@ struct ContentView: View {
 
             detailContent
         }
-        .frame(width: AppWindowLayout.width)
-        .frame(minHeight: AppWindowLayout.minimumHeight)
+        .frame(
+            minWidth: AppWindowLayout.minimumWidth,
+            minHeight: AppWindowLayout.minimumHeight
+        )
         .onAppear {
             logger.notice("ContentView appeared")
             Task { await GitHubUpdateService.shared.checkForUpdates() }
