@@ -20,6 +20,8 @@ class Recorder: NSObject, ObservableObject {
     private let playbackController = PlaybackController.shared
     @Published var audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
     private var audioMeterUpdateTimer: DispatchSourceTimer?
+    // Serial with the meter timer callbacks, so plain incrementing is safe.
+    private var meterTickCounter: UInt64 = 0
     private let audioMeterQueue = DispatchQueue(label: "app.localvoice.LocalVoice.audiometer", qos: .userInteractive)
     /// Dedicated serial queue for hardware setup.
     private let audioSetupQueue = DispatchQueue(label: "app.localvoice.LocalVoice.audioSetup", qos: .userInitiated)
@@ -301,10 +303,12 @@ class Recorder: NSObject, ObservableObject {
         }
 
         // Apply EMA smoothing with thread-safe access
+        meterTickCounter &+= 1
+        let tick = meterTickCounter
         let newAudioMeter = smoothedValues.withLock { values in
             values.average = values.average * 0.6 + normalizedAverage * 0.4
             values.peak = values.peak * 0.6 + normalizedPeak * 0.4
-            return AudioMeter(averagePower: Double(values.average), peakPower: Double(values.peak))
+            return AudioMeter(averagePower: Double(values.average), peakPower: Double(values.peak), tick: tick)
         }
 
         // Dispatch to main queue for UI updates (more efficient than Task)
@@ -334,4 +338,9 @@ class Recorder: NSObject, ObservableObject {
 struct AudioMeter: Equatable {
     let averagePower: Double
     let peakPower: Double
+    // Distinguishes otherwise-identical readings (e.g. sustained silence) so
+    // SwiftUI's `.onChange(of:)` keeps firing every meter tick instead of only
+    // when the level itself changes — the waveform must keep animating even
+    // while the level is flat, or a pause reads as "transcription stopped."
+    var tick: UInt64 = 0
 }

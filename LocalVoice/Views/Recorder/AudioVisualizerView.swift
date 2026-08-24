@@ -18,8 +18,8 @@ struct AudioVisualizer: View {
         }
         .frame(width: 96, height: 28)
         .accessibilityHidden(true)
-        .onChange(of: audioMeter.averagePower, initial: true) { _, newLevel in
-            appendSample(from: newLevel)
+        .onChange(of: audioMeter, initial: true) { _, newMeter in
+            appendSample(from: newMeter.averagePower)
         }
         .onChange(of: isActive) { _, active in
             if !active {
