@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  WHISPER_CPP_REVISION: 080bbbe85230f624f0b52127f1ae1218247989f9
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache whisper.xcframework
+        id: whisper-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/LocalVoice-Dependencies/whisper.cpp/build-apple/whisper.xcframework
+          key: whisper-xcframework-${{ env.WHISPER_CPP_REVISION }}-${{ runner.os }}
+
+      - name: Build whisper framework
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/LocalVoice-Dependencies"
+          git init "$HOME/LocalVoice-Dependencies/whisper.cpp"
+          git -C "$HOME/LocalVoice-Dependencies/whisper.cpp" remote add origin https://github.com/ggerganov/whisper.cpp.git
+          git -C "$HOME/LocalVoice-Dependencies/whisper.cpp" fetch --depth 1 origin "$WHISPER_CPP_REVISION"
+          git -C "$HOME/LocalVoice-Dependencies/whisper.cpp" checkout --detach FETCH_HEAD
+          cd "$HOME/LocalVoice-Dependencies/whisper.cpp"
+          ./build-xcframework.sh
+
+      - name: Run unit and UI tests
+        run: |
+          xcodebuild \
+            -project LocalVoice.xcodeproj \
+            -scheme LocalVoice \
+            -destination 'platform=macOS' \
+            test

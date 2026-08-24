@@ -21,12 +21,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check signing/notarization secrets are configured
+        run: |
+          missing=()
+          [ -z "$P12_BASE64" ] && missing+=("DEVELOPER_ID_APPLICATION_P12_BASE64")
+          [ -z "$P12_PASSWORD" ] && missing+=("DEVELOPER_ID_APPLICATION_P12_PASSWORD")
+          [ -z "$NOTARY_KEY_BASE64" ] && missing+=("APPLE_NOTARY_KEY_P8_BASE64")
+          [ -z "$NOTARY_KEY_ID" ] && missing+=("APPLE_NOTARY_KEY_ID")
+          [ -z "$NOTARY_ISSUER_ID" ] && missing+=("APPLE_NOTARY_ISSUER_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required Actions secrets: ${missing[*]}"
+            echo "See docs/DISTRIBUTION.md ('GitHub Actions secrets') for how to generate and add them in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Import Developer ID certificate
         env:
           KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          test -n "$P12_BASE64"
-          test -n "$P12_PASSWORD"
           CERTIFICATE_PATH="$RUNNER_TEMP/developer-id.p12"
           KEYCHAIN_PATH="$RUNNER_TEMP/localvoice-signing.keychain-db"
           echo "$P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
