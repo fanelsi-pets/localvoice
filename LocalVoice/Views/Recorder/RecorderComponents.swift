@@ -305,10 +305,20 @@ struct RecorderModeButton: View {
 struct LiveTranscriptView: View {
     let text: String
 
+    // Long dictations keep growing `text` for the whole session. This view only
+    // ever shows a fixed-height tail of it, so cap what we hand to `Text` —
+    // otherwise SwiftUI re-lays-out the full, ever-growing string on every
+    // partial update and stalls the main thread (freezing the waveform too).
+    private static let maxDisplayedCharacters = 600
+
+    private var displayText: String {
+        String(text.suffix(Self.maxDisplayedCharacters))
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                Text(text)
+                Text(displayText)
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)

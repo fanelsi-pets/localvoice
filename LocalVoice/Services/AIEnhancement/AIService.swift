@@ -296,10 +296,9 @@ class AIService: ObservableObject {
         }
 
         if selectedProvider.requiresAPIKey {
-            if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
-                self.apiKey = savedKey
-                self.isAPIKeyValid = true
-            }
+            // Accessing the login Keychain can briefly wait for the system keychain
+            // daemon.  Do not make the application window wait for that response.
+            loadSavedAPIKeyInBackground(for: selectedProvider)
         } else {
             self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
         }
@@ -346,6 +345,18 @@ class AIService: ObservableObject {
         } else {
             apiKey = ""
             isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+        }
+    }
+
+    private func loadSavedAPIKeyInBackground(for provider: AIProvider) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let savedKey = APIKeyManager.shared.getAPIKey(forProvider: provider.rawValue)
+
+            DispatchQueue.main.async {
+                guard let self, self.selectedProvider == provider else { return }
+                self.apiKey = savedKey ?? ""
+                self.isAPIKeyValid = savedKey != nil
+            }
         }
     }
 

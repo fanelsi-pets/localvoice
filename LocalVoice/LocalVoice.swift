@@ -135,9 +135,11 @@ struct LocalVoiceApp: App {
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
         OnlineFirstModelMigration.run(using: transcriptionModelManager)
-        let restoredModelIsUsable = transcriptionModelManager.currentTranscriptionModel.map { restored in
-            transcriptionModelManager.usableModels.contains(where: { $0.name == restored.name })
-        } ?? false
+        // Cloud-key lookups go through the login Keychain and must not run while
+        // SwiftUI is creating the first window.  Preserve a restored selection
+        // here; the model manager validates credentials lazily when a cloud
+        // transcription is actually requested.
+        let restoredModelIsUsable = transcriptionModelManager.currentTranscriptionModel != nil
         if !restoredModelIsUsable,
             let bundledDefault = transcriptionModelManager.allAvailableModels.first(where: {
                 $0.provider == .gemini || $0.provider == .openAI
@@ -318,18 +320,6 @@ struct LocalVoiceApp: App {
                                         modelContext: container.mainContext)
                                 }
                                 audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
-                            }
-
-                            // Process any pending open-file request now that the main ContentView is ready.
-                            if let pendingURL = appDelegate.pendingOpenFileURL {
-                                Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow").notice(
-                                    "🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))"
-                                )
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    NotificationCenter.default.post(
-                                        name: .openFileInMeetings, object: nil, userInfo: ["url": pendingURL])
-                                }
-                                appDelegate.pendingOpenFileURL = nil
                             }
                         }
                         .background(

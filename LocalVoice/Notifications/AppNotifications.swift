@@ -17,6 +17,5 @@ extension Notification.Name {
     static let transcriptionCompleted = Notification.Name("transcriptionCompleted")
     static let transcriptionDeleted = Notification.Name("transcriptionDeleted")
     static let sessionMetricsDidChange = Notification.Name("sessionMetricsDidChange")
-    static let openFileInMeetings = Notification.Name("openFileInMeetings")
     static let audioDeviceSwitchRequired = Notification.Name("audioDeviceSwitchRequired")
 }

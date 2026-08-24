@@ -55,44 +55,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         WindowManager.shared.prepareForApplicationTermination()
         return .terminateNow
     }
-
-    // Stash URL when app cold-starts to avoid spawning a new window/tab
-    var pendingOpenFileURL: URL?
-
-    func application(_ application: NSApplication, open urls: [URL]) {
-        logger.notice(
-            "🧭 Application received open-URLs request. urlCount=\(urls.count, privacy: .public); hasCurrentMainWindow=\((WindowManager.shared.currentMainWindow() != nil), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(application.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
-        )
-
-        guard let url = urls.first(where: { SupportedMedia.isSupported(url: $0) }) else {
-            logger.notice("🧭 Open-URLs request ignored because no supported media URL was found.")
-            return
-        }
-
-        if let menuBarManager {
-            menuBarManager.activateForPresentedWindow(reason: "OpenMediaFile")
-        } else {
-            AppPresentationPolicy.activateForUserFacingWindow(reason: "OpenMediaFileWithoutMenuBarManager")
-        }
-
-        if WindowManager.shared.currentMainWindow() == nil {
-            // Cold start: do NOT create a window here to avoid extra window/tab.
-            // Defer to SwiftUI's main window scene and let ContentView process this later.
-            pendingOpenFileURL = url
-            WindowManager.shared.prepareForUserRequestedMainWindow()
-            logger.notice(
-                "🧭 Stored pending media URL and requested SwiftUI main window. urlLastPath=\(url.lastPathComponent, privacy: .private(mask: .hash))"
-            )
-            MainWindowRequestCoordinator.shared.requestMainWindow()
-        } else {
-            // Running: focus the current window and route the media file to Meetings.
-            logger.notice(
-                "🧭 Routing media URL to existing main window. urlLastPath=\(url.lastPathComponent, privacy: .private(mask: .hash))"
-            )
-            WindowManager.shared.showMainWindow()
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .openFileInMeetings, object: nil, userInfo: ["url": url])
-            }
-        }
-    }
 }

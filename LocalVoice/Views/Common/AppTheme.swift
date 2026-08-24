@@ -63,7 +63,6 @@ enum AppTheme {
         static let models = Color(nsColor: .systemBrown)
         static let audio = Color(nsColor: .systemPink)
         static let dictionary = Color(nsColor: .systemBlue)
-        static let meetings = Color(nsColor: .systemTeal)
         static let fallback = Color(nsColor: .systemGray)
     }
 

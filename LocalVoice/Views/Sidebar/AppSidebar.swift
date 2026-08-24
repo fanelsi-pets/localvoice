@@ -102,7 +102,6 @@ extension ViewType {
     static let primaryItems: [ViewType] = [
         .dashboard,
         .modes,
-        .meetings,
         .history,
         .dictionary,
         .models,
@@ -123,18 +122,12 @@ extension ViewType {
 
 private extension ViewType {
     var title: LocalizedStringKey {
-        switch self {
-        case .meetings:
-            return "Meetings"
-        default:
-            return LocalizedStringKey(rawValue)
-        }
+        LocalizedStringKey(rawValue)
     }
 
     var icon: String {
         switch self {
         case .dashboard: return "gauge.medium"
-        case .meetings: return "person.2.wave.2.fill"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"
@@ -158,8 +151,6 @@ private extension ViewType {
             return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
             return .init(background: AppTheme.Sidebar.audio)
-        case .meetings:
-            return .init(background: AppTheme.Sidebar.meetings)
         case .settings:
             return .init(background: AppTheme.Sidebar.fallback)
         }
