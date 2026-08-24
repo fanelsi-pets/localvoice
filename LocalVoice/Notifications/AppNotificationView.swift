@@ -16,6 +16,7 @@ struct AppNotificationView: View {
         case warning
         case info
         case success
+        case ai
 
         var iconName: String {
             switch self {
@@ -23,6 +24,7 @@ struct AppNotificationView: View {
             case .warning: return "exclamationmark.triangle.fill"
             case .info: return "info.circle.fill"
             case .success: return "checkmark.circle.fill"
+            case .ai: return "sparkles"
             }
         }
 
@@ -32,6 +34,7 @@ struct AppNotificationView: View {
             case .warning: return AppTheme.Status.warning
             case .info: return AppTheme.Status.info
             case .success: return AppTheme.Status.success
+            case .ai: return AppTheme.Status.ai
             }
         }
     }

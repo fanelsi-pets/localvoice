@@ -21,6 +21,7 @@ final class TranscriptionDelivery {
         let sendFollowUp: (String, Transcription) async -> Void
         let showResponse: (String, String?) async -> Void
         let failResponse: (String) async -> Void
+        let suggestImprovement: (String, TimeInterval) -> Void
     }
 
     func deliver(_ request: Request, actions: Actions) async {
@@ -53,7 +54,7 @@ final class TranscriptionDelivery {
         }
 
         if let text = request.text {
-            await paste(text, output: request.output, actions: actions)
+            await paste(text, output: request.output, dictationDuration: request.transcription.duration, actions: actions)
         } else {
             await actions.dismiss()
         }
@@ -161,7 +162,9 @@ final class TranscriptionDelivery {
         String(format: "%.3f", duration)
     }
 
-    private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
+    private func paste(
+        _ text: String, output: OutputRuntimeConfiguration, dictationDuration: TimeInterval, actions: Actions
+    ) async {
         let textToPaste = deliverableText(from: text)
         let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
         let pastedText = textToPaste + (appendSpace ? " " : "")
@@ -177,6 +180,8 @@ final class TranscriptionDelivery {
             if autoSendKey.isEnabled {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 CursorPaster.performAutoSend(autoSendKey)
+            } else {
+                actions.suggestImprovement(textToPaste, dictationDuration)
             }
         }
     }

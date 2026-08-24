@@ -523,7 +523,10 @@ class LocalVoiceEngine: NSObject, ObservableObject {
                     guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                     self.assistantSession.fail(message)
                 }
-            )
+            ),
+            onImprovableTextDelivered: { [weak self] pastedText, dictationDuration in
+                self?.offerImprovementIfEligible(pastedText: pastedText, dictationDuration: dictationDuration)
+            }
         )
 
         let didFinishActivePipeline = activePipelineTranscriptionID == transcriptionID

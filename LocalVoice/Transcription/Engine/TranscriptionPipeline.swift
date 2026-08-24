@@ -63,7 +63,8 @@ class TranscriptionPipeline {
         onCancel: @escaping () async -> Void,
         onDismiss: @escaping () async -> Void,
         suppressAutomaticPaste: Bool = false,
-        assistant: AssistantHooks = .inactive
+        assistant: AssistantHooks = .inactive,
+        onImprovableTextDelivered: @escaping (String, TimeInterval) -> Void = { _, _ in }
     ) async {
         let model = transcriptionConfiguration.model
         var finalText: String?
@@ -288,7 +289,8 @@ class TranscriptionPipeline {
                 dismiss: onDismiss,
                 sendFollowUp: assistant.sendFollowUp,
                 showResponse: assistant.showResponse,
-                failResponse: assistant.failResponse
+                failResponse: assistant.failResponse,
+                suggestImprovement: onImprovableTextDelivered
             )
         )
 

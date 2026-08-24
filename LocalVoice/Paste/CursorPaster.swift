@@ -30,6 +30,43 @@ class CursorPaster {
         }
     }
 
+    /// Posts Cmd+Z at the current cursor to undo the app's own previous paste,
+    /// so the pasted text can be replaced in place (e.g. by an improved rewrite).
+    /// Relies on the target app treating the paste as a single undoable action.
+    @MainActor
+    static func undoLastPasteAndReplace(with text: String) async {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to undo with simulated key events")
+            return
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+
+        guard let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true),
+            let zDown = CGEvent(keyboardEventSource: source, virtualKey: 0x06, keyDown: true),
+            let zUp = CGEvent(keyboardEventSource: source, virtualKey: 0x06, keyDown: false),
+            let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
+        else {
+            logger.error("Failed to create Cmd+Z keyboard events")
+            return
+        }
+
+        cmdDown.flags = .maskCommand
+        zDown.flags = .maskCommand
+        zUp.flags = .maskCommand
+
+        cmdDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        zDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        zUp.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        cmdUp.post(tap: .cghidEventTap)
+
+        await wait(prePasteDelay)
+        _ = await startPasteAtCursor(text).value
+    }
+
     @MainActor
     @discardableResult
     static func startPasteAtCursor(_ text: String) -> Task<PasteResult, Never> {

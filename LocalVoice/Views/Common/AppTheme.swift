@@ -46,6 +46,7 @@ enum AppTheme {
         static let warning = Color(nsColor: .alternateSelectedControlTextColor).opacity(0.85)
         static let warningStrong = Color(nsColor: .systemOrange)
         static let error = Color(nsColor: .systemRed)
+        static let ai = Color(nsColor: .systemIndigo)
     }
 
     enum Data {
