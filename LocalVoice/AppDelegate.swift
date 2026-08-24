@@ -7,6 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: "app.localvoice.LocalVoice", category: "MenuBarWindowFlow")
 
     weak var menuBarManager: MenuBarManager?
+    weak var enhancementService: AIEnhancementService?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Install the notification observer before the status item can emit an
@@ -17,6 +18,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menuBarManager?.applyActivationPolicy()
         menuBarManager?.ensureStatusItemInstalled()
+
+        TextImprovementServiceProvider.shared.enhancementService = enhancementService
+        NSApplication.shared.servicesProvider = TextImprovementServiceProvider.shared
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

@@ -182,6 +182,7 @@ struct LocalVoiceApp: App {
         _prewarmService = StateObject(wrappedValue: prewarmService)
 
         appDelegate.menuBarManager = menuBarManager
+        appDelegate.enhancementService = enhancementService
 
         // Ensure no lingering recording state from previous runs
         Task {

@@ -1,6 +1,86 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Long dictation — clean it up and structure it?" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Довга диктовка — прибрати й структурувати?"
+          }
+        }
+      }
+    },
+    "Improve" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покращити"
+          }
+        }
+      }
+    },
+    "Improve failed: %@" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не вдалося покращити: %@"
+          }
+        }
+      }
+    },
+    "LocalVoice didn't receive any selected text." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LocalVoice не отримав виділений текст."
+          }
+        }
+      }
+    },
+    "LocalVoice isn't ready yet." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LocalVoice ще не готовий."
+          }
+        }
+      }
+    },
+    "LocalVoice couldn't improve this text." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LocalVoice не зміг покращити цей текст."
+          }
+        }
+      }
+    },
+    "✨ Improve with LocalVoice" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ Покращити через LocalVoice"
+          }
+        }
+      }
+    },
+    "Structure" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Структура"
+          }
+        }
+      }
+    },
     "" : {
       "localizations" : {
         "uk" : {

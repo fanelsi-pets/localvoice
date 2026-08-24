@@ -8,5 +8,29 @@
 	<string>Local Voice needs microphone access to record audio for on-device transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>LocalVoice needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>✨ Improve with LocalVoice</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>improveSelectedText</string>
+			<key>NSPortName</key>
+			<string>LocalVoice</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+				<string>public.utf8-plain-text</string>
+			</array>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+				<string>public.utf8-plain-text</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

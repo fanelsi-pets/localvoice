@@ -9,7 +9,9 @@ enum TranscriptStructuringSuggestion {
 
     /// Secondary guard alongside duration: a long recording that transcribed to
     /// very little text (silence, false starts) doesn't need structuring either.
-    static let minimumCharacterCount = 400
+    /// ~20s of normal speech transcribes to roughly 200-250 characters, so this
+    /// stays a bit below that rather than requiring an unusually long dictation.
+    static let minimumCharacterCount = 250
 
     static func isEligible(text: String, dictationDuration: TimeInterval) -> Bool {
         dictationDuration >= minimumDictationDuration && text.count >= minimumCharacterCount
@@ -36,5 +38,30 @@ enum TranscriptStructuringSuggestion {
             useSystemInstructions: true
         )
         return base.replacingPrompt(prompt)
+    }
+}
+
+extension AIEnhancementService {
+    /// Runs the same fixed structuring prompt used by the post-dictation "Improve"
+    /// suggestion, but against arbitrary text (e.g. from the Services menu) rather
+    /// than a just-delivered transcript. Uses whatever AI provider/model the user
+    /// currently has connected, regardless of the active Mode's own enhancement setting.
+    func structureText(_ text: String) async throws -> String {
+        guard let aiService = getAIService() else {
+            throw EnhancementError.notConfigured
+        }
+
+        let baseConfiguration = ModeRuntimeResolver.currentEnhancementConfiguration(
+            enhancementService: self,
+            aiService: aiService
+        )
+        let configuration = TranscriptStructuringSuggestion.makeConfiguration(from: baseConfiguration)
+
+        guard isConfigured(for: configuration) else {
+            throw EnhancementError.notConfigured
+        }
+
+        let (result, _, _) = try await enhance(text, configuration: configuration)
+        return result
     }
 }

@@ -178,6 +178,7 @@ final class TranscriptionDelivery {
             _ = await pasteTask.value
 
             if autoSendKey.isEnabled {
+                logger.notice("Skipping improve suggestion because auto-send is enabled")
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 CursorPaster.performAutoSend(autoSendKey)
             } else {
