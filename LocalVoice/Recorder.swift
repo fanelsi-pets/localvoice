@@ -3,6 +3,16 @@ import CoreAudio
 import Foundation
 import os
 
+/// Holds the live audio level on its own `ObservableObject`, separate from `Recorder`.
+/// It publishes at up to ~30Hz while recording; keeping it off `Recorder` means that
+/// churn only invalidates the small waveform view that actually observes it, instead
+/// of re-running the whole recorder panel's body (transcript, buttons, popovers, …)
+/// on every meter tick — which was jank-inducing and pushed hotkey handling behind.
+@MainActor
+final class AudioMeterPublisher: ObservableObject {
+    @Published var audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
+}
+
 @MainActor
 class Recorder: NSObject, ObservableObject {
     private struct SmoothedValues {
@@ -18,7 +28,7 @@ class Recorder: NSObject, ObservableObject {
     private var isReconfiguring = false
     private let mediaController = MediaController.shared
     private let playbackController = PlaybackController.shared
-    @Published var audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
+    let meterPublisher = AudioMeterPublisher()
     private var audioMeterUpdateTimer: DispatchSourceTimer?
     // Serial with the meter timer callbacks, so plain incrementing is safe.
     private var meterTickCounter: UInt64 = 0
@@ -194,7 +204,7 @@ class Recorder: NSObject, ObservableObject {
             values.peak = 0
         }
 
-        audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
+        meterPublisher.audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
 
         audioRestorationTask?.cancel()
         audioRestorationTask = Task {
@@ -239,7 +249,9 @@ class Recorder: NSObject, ObservableObject {
 
     private func startAudioMeterTimer() {
         let timer = DispatchSource.makeTimerSource(queue: audioMeterQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(17))
+        // 30Hz is plenty smooth for a 96-sample waveform and meaningfully
+        // cuts the main-thread churn from publishing this at every tick.
+        timer.schedule(deadline: .now(), repeating: .milliseconds(33))
         timer.setEventHandler { [weak self] in
             self?.updateAudioMeter()
         }
@@ -314,7 +326,7 @@ class Recorder: NSObject, ObservableObject {
         // Dispatch to main queue for UI updates (more efficient than Task)
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.audioMeter = newAudioMeter
+            self.meterPublisher.audioMeter = newAudioMeter
         }
     }
 

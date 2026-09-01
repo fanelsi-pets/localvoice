@@ -350,12 +350,14 @@ struct LiveTranscriptView: View {
 
 struct RecorderStatusDisplay: View {
     let currentState: RecordingState
-    let audioMeter: AudioMeter
+    // Observed here, not by the caller, so this tiny view is the only thing that
+    // redraws on every meter tick — not the whole recorder panel around it.
+    @ObservedObject var meterPublisher: AudioMeterPublisher
     let menuBarHeight: CGFloat?
 
-    init(currentState: RecordingState, audioMeter: AudioMeter, menuBarHeight: CGFloat? = nil) {
+    init(currentState: RecordingState, meterPublisher: AudioMeterPublisher, menuBarHeight: CGFloat? = nil) {
         self.currentState = currentState
-        self.audioMeter = audioMeter
+        self.meterPublisher = meterPublisher
         self.menuBarHeight = menuBarHeight
     }
 
@@ -366,7 +368,7 @@ struct RecorderStatusDisplay: View {
             } else if currentState == .transcribing {
                 ProcessingStatusDisplay(mode: .transcribing, color: .white).transition(.opacity)
             } else if currentState == .recording {
-                AudioVisualizer(audioMeter: audioMeter, color: .white, isActive: true)
+                AudioVisualizer(audioMeter: meterPublisher.audioMeter, color: .white, isActive: true)
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
                     .transition(.opacity)
             } else {
