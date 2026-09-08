@@ -25927,6 +25927,113 @@
           }
         }
       }
+    },
+    "Download the models once and run the self-test. Everything stays on this Mac." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завантажте моделі один раз і пройдіть самоперевірку. Усе залишається на цьому Mac."
+          }
+        }
+      }
+    },
+    "Import a Zoom recording to get speakers, timecodes, names and project memory." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Імпортуйте запис Zoom, щоб отримати спікерів, таймкоди, імена й пам'ять проєкту."
+          }
+        }
+      }
+    },
+    "Meeting Settings…" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Налаштування зустрічей…"
+          }
+        }
+      }
+    },
+    "Meetings are ready" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зустрічі готові"
+          }
+        }
+      }
+    },
+    "People" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Люди"
+          }
+        }
+      }
+    },
+    "Processing: %@" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обробка: %@"
+          }
+        }
+      }
+    },
+    "Set up Meetings" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Налаштувати зустрічі"
+          }
+        }
+      }
+    },
+    "Show all" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати всі"
+          }
+        }
+      }
+    },
+    "Transcribe a meeting" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Транскрибувати зустріч"
+          }
+        }
+      }
+    },
+    "Точнее всего имена спикеров получаются, если в Zoom включена опция Settings → Recording → «Record a separate audio file for each participant»." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speaker names are most accurate when Zoom's Settings → Recording → “Record a separate audio file for each participant” option is on."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найточніше імена спікерів визначаються, якщо в Zoom увімкнено опцію Settings → Recording → «Record a separate audio file for each participant»."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -30,6 +30,17 @@ NATIVE_KEYS = {
         "Моделі ще не налаштовано — відкрийте «Зустрічі», щоб завантажити їх і пройти самоперевірку.",
     "Ready: models are downloaded. Processing keeps running in the background even with the window closed.":
         "Готово: моделі завантажено. Обробка триває у фоні навіть із закритим вікном.",
+    "Set up Meetings": "Налаштувати зустрічі",
+    "Download the models once and run the self-test. Everything stays on this Mac.":
+        "Завантажте моделі один раз і пройдіть самоперевірку. Усе залишається на цьому Mac.",
+    "Transcribe a meeting": "Транскрибувати зустріч",
+    "Meetings are ready": "Зустрічі готові",
+    "Import a Zoom recording to get speakers, timecodes, names and project memory.":
+        "Імпортуйте запис Zoom, щоб отримати спікерів, таймкоди, імена й пам'ять проєкту.",
+    "Processing: %@": "Обробка: %@",
+    "People": "Люди",
+    "Show all": "Показати всі",
+    "Meeting Settings…": "Налаштування зустрічей…",
 }
 
 

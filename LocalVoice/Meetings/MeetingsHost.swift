@@ -28,6 +28,7 @@ final class MeetingsHost {
             libraryDirectory: dataDirectory,
             modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true)
         )
+        model.windowTitle = String(localized: "Meetings")
     }
 
     /// Called by `MeetingsWindowRequestBridge` once SwiftUI can open windows.
