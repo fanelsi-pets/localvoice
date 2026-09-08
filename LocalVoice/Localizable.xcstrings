@@ -26051,6 +26051,36 @@
           }
         }
       }
+    },
+    "%@ requires %@. This Mac stays on the current version." : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ потребує %@. Цей Mac залишається на поточній версії."
+          }
+        }
+      }
+    },
+    "Apple Silicon" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Silicon"
+          }
+        }
+      }
+    },
+    "macOS %@ or later" : {
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS %@ або новіша"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

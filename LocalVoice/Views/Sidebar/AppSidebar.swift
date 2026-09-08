@@ -28,6 +28,13 @@ struct AppSidebar: View {
                 updateButton(for: release)
                     .padding(.horizontal, 10)
                     .padding(.bottom, 6)
+            } else if let note = updateService.incompatibleReleaseNote {
+                Text(note)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
             }
 
             sidebarSection(ViewType.secondaryItems)

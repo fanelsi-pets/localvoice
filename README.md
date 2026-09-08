@@ -4,6 +4,7 @@ Local Voice is a native macOS dictation app built around private on-device trans
 
 ## Features
 
+- Meetings: transcribe Zoom recordings on this Mac — speaker separation, per-speaker language (Russian, Ukrainian, English), names, project memory and Markdown/SRT export (the MeetingScribe core).
 - Bundled Whisper Base model for offline transcription.
 - Optional downloadable Whisper models, including Medium and Large variants.
 - Optional Gemini and OpenAI transcription and text enhancement.
@@ -23,7 +24,8 @@ See [PRIVACY.md](PRIVACY.md) for implementation details.
 
 ## Build
 
-Requirements: macOS 14.4+, Xcode, Git, CMake, and Swift.
+Requirements: macOS 15+ on Apple Silicon, Xcode 26, Git, CMake, and Swift. The Meetings core is the `MeetingScribeKit`
+Swift package referenced from `../Транскрибация` (see `THIRD_PARTY_NOTICES.md`).
 
 ```sh
 make local

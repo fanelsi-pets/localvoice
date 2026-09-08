@@ -6,6 +6,8 @@ final class GitHubUpdateService: ObservableObject {
     static let shared = GitHubUpdateService()
 
     @Published private(set) var availableRelease: Release?
+    /// Newest release exists but this Mac does not meet its requirements (from the release's `update.json`).
+    @Published private(set) var incompatibleReleaseNote: String?
     @Published private(set) var isChecking = false
     @Published private(set) var isDownloading = false
     @Published private(set) var errorMessage: String?
@@ -50,6 +52,17 @@ final class GitHubUpdateService: ObservableObject {
                 return name == "\(dmgName).sha256" || name.hasSuffix("sha256sums.txt")
             }
         }
+
+        /// Optional compatibility manifest published next to the DMG.
+        var manifestAsset: Asset? {
+            assets.first { $0.name.lowercased() == "update.json" }
+        }
+    }
+
+    /// `update.json` next to a release's DMG: requirements the installed app checks before offering it.
+    struct UpdateManifest: Decodable {
+        let minimumSystemVersion: String?
+        let architectures: [String]?
     }
 
     struct Asset: Decodable {
@@ -92,10 +105,24 @@ final class GitHubUpdateService: ObservableObject {
 
             let release = try JSONDecoder().decode(Release.self, from: data)
             guard !release.draft, !release.prerelease else { return }
-            availableRelease = Self.isNewer(
-                release.tagName,
-                than: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-            ) ? release : nil
+            let installedVersion =
+                Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+            guard Self.isNewer(release.tagName, than: installedVersion) else {
+                availableRelease = nil
+                incompatibleReleaseNote = nil
+                return
+            }
+            if let manifestAsset = release.manifestAsset,
+                let manifest = try? await Self.fetchManifest(manifestAsset),
+                !Self.isCompatible(manifest)
+            {
+                // Newer build needs a newer macOS or another architecture: never offer it, say why.
+                availableRelease = nil
+                incompatibleReleaseNote = Self.incompatibilityNote(for: manifest, tagName: release.tagName)
+                return
+            }
+            incompatibleReleaseNote = nil
+            availableRelease = release
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -152,7 +179,60 @@ final class GitHubUpdateService: ObservableObject {
         }
     }
 
-    static func shouldQuitForMountedUpdate(
+    private static func fetchManifest(_ asset: Asset) async throws -> UpdateManifest {
+        var request = URLRequest(url: asset.downloadURL)
+        request.setValue("LocalVoice-Updater", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONDecoder().decode(UpdateManifest.self, from: data)
+    }
+
+    /// Architecture of this process — a universal build under Rosetta reports x86_64, which is what matters
+    /// for the DMG it would install.
+    nonisolated static var currentArchitecture: String {
+        #if arch(arm64)
+            return "arm64"
+        #else
+            return "x86_64"
+        #endif
+    }
+
+    nonisolated static func isCompatible(
+        _ manifest: UpdateManifest,
+        systemVersion: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion,
+        architecture: String = currentArchitecture
+    ) -> Bool {
+        if let minimum = manifest.minimumSystemVersion {
+            let required = versionComponents(minimum)
+            let current = [systemVersion.majorVersion, systemVersion.minorVersion, systemVersion.patchVersion]
+            for index in 0..<max(required.count, current.count) {
+                let left = index < current.count ? current[index] : 0
+                let right = index < required.count ? required[index] : 0
+                if left != right { return left > right }
+            }
+        }
+        if let architectures = manifest.architectures, !architectures.isEmpty {
+            return architectures.contains(architecture)
+        }
+        return true
+    }
+
+    nonisolated static func incompatibilityNote(for manifest: UpdateManifest, tagName: String) -> String {
+        var requirements: [String] = []
+        if let minimum = manifest.minimumSystemVersion {
+            requirements.append(String(format: String(localized: "macOS %@ or later"), minimum))
+        }
+        if let architectures = manifest.architectures, !architectures.isEmpty {
+            requirements.append(
+                architectures.contains("arm64") && !architectures.contains("x86_64")
+                    ? String(localized: "Apple Silicon") : architectures.joined(separator: ", "))
+        }
+        return String(
+            format: String(localized: "%@ requires %@. This Mac stays on the current version."),
+            tagName, requirements.joined(separator: ", "))
+    }
+
+    nonisolated static func shouldQuitForMountedUpdate(
         candidateIdentifier: String?,
         candidateVersion: String,
         installedIdentifier: String,
@@ -161,7 +241,7 @@ final class GitHubUpdateService: ObservableObject {
         candidateIdentifier == installedIdentifier && isNewer(candidateVersion, than: installedVersion)
     }
 
-    static func isNewer(_ candidate: String, than installed: String) -> Bool {
+    nonisolated static func isNewer(_ candidate: String, than installed: String) -> Bool {
         let lhs = versionComponents(candidate)
         let rhs = versionComponents(installed)
         for index in 0..<max(lhs.count, rhs.count) {
@@ -172,7 +252,7 @@ final class GitHubUpdateService: ObservableObject {
         return false
     }
 
-    private static func versionComponents(_ value: String) -> [Int] {
+    nonisolated private static func versionComponents(_ value: String) -> [Int] {
         value.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
             .split(separator: ".")
             .map { component in

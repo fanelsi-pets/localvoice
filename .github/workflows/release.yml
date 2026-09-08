@@ -1,16 +1,16 @@
 name: Release DMG
 
+# Releases are built and notarized locally (scripts/sign-notarize-dmg.sh) while the MeetingScribe core is
+# referenced as a local package; run this workflow manually once the core is fetchable from CI.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       WHISPER_CPP_REVISION: 080bbbe85230f624f0b52127f1ae1218247989f9
       P12_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_BASE64 }}
@@ -75,7 +75,7 @@ jobs:
             -scheme LocalVoice \
             -configuration Release \
             -derivedDataPath .release-build \
-            ARCHS="arm64 x86_64" \
+            ARCHS="arm64" \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
@@ -88,8 +88,8 @@ jobs:
           EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
           ACTUAL_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PATH/Contents/Info.plist")"
           test "$ACTUAL_VERSION" = "$EXPECTED_VERSION"
-          lipo "$APP_BINARY" -verify_arch arm64 x86_64
-          lipo "$WHISPER_BINARY" -verify_arch arm64 x86_64
+          lipo "$APP_BINARY" -verify_arch arm64
+          lipo "$WHISPER_BINARY" -verify_arch arm64
 
       - name: Sign, notarize, and staple DMG
         run: |

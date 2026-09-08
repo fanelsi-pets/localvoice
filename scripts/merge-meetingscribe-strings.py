@@ -41,6 +41,9 @@ NATIVE_KEYS = {
     "People": "Люди",
     "Show all": "Показати всі",
     "Meeting Settings…": "Налаштування зустрічей…",
+    "macOS %@ or later": "macOS %@ або новіша",
+    "Apple Silicon": "Apple Silicon",
+    "%@ requires %@. This Mac stays on the current version.": "%@ потребує %@. Цей Mac залишається на поточній версії.",
 }
 
 

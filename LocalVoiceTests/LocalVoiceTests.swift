@@ -18,6 +18,19 @@ struct LocalVoiceTests {
         #expect(!GitHubUpdateService.isNewer("2.9.9", than: "3.0.0"))
     }
 
+    @Test @MainActor func updateManifestGatesIncompatibleReleases() {
+        let manifest = GitHubUpdateService.UpdateManifest(minimumSystemVersion: "15.0", architectures: ["arm64"])
+        let sequoia = OperatingSystemVersion(majorVersion: 15, minorVersion: 0, patchVersion: 0)
+        let sonoma = OperatingSystemVersion(majorVersion: 14, minorVersion: 7, patchVersion: 2)
+        #expect(GitHubUpdateService.isCompatible(manifest, systemVersion: sequoia, architecture: "arm64"))
+        #expect(!GitHubUpdateService.isCompatible(manifest, systemVersion: sonoma, architecture: "arm64"))
+        #expect(!GitHubUpdateService.isCompatible(manifest, systemVersion: sequoia, architecture: "x86_64"))
+        let unrestricted = GitHubUpdateService.UpdateManifest(minimumSystemVersion: nil, architectures: nil)
+        #expect(GitHubUpdateService.isCompatible(unrestricted, systemVersion: sonoma, architecture: "x86_64"))
+        let note = GitHubUpdateService.incompatibilityNote(for: manifest, tagName: "v4.0.0")
+        #expect(note.contains("v4.0.0") && note.contains("15.0"))
+    }
+
     @Test @MainActor func onlyQuitsForANewerMatchingApp() {
         #expect(
             GitHubUpdateService.shouldQuitForMountedUpdate(
