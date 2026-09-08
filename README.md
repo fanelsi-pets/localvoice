@@ -24,8 +24,8 @@ See [PRIVACY.md](PRIVACY.md) for implementation details.
 
 ## Build
 
-Requirements: macOS 15+ on Apple Silicon, Xcode 26, Git, CMake, and Swift. The Meetings core is the `MeetingScribeKit`
-Swift package referenced from `../Транскрибация` (see `THIRD_PARTY_NOTICES.md`).
+Requirements: macOS 15+ on Apple Silicon, Xcode 26, Git, CMake, and Swift. The Meetings core is the vendored
+`MeetingScribeKit` Swift package in this repository (see `MeetingScribeKit/README.md`).
 
 ```sh
 make local

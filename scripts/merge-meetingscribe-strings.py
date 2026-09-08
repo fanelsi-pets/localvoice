@@ -60,7 +60,7 @@ def save(path, data):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--kit", default="../Транскрибация/App/MeetingScribe/Localizable.xcstrings")
+    parser.add_argument("--kit", default="MeetingScribeKit/Localizable.xcstrings")
     parser.add_argument("--catalog", default="LocalVoice/Localizable.xcstrings")
     args = parser.parse_args()
 

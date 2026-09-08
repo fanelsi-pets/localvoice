@@ -277,7 +277,7 @@
 				E1DD20DF2FA20AEE0020AF3B /* XCRemoteSwiftPackageReference "LLMkit" */,
 				E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */,
 				E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
-				E1AA00000000000000000001 /* XCLocalSwiftPackageReference "../Транскрибация" */,
+				E1AA00000000000000000001 /* XCLocalSwiftPackageReference "MeetingScribeKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -670,9 +670,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		E1AA00000000000000000001 /* XCLocalSwiftPackageReference "../Транскрибация" */ = {
+		E1AA00000000000000000001 /* XCLocalSwiftPackageReference "MeetingScribeKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../Транскрибация";
+			relativePath = MeetingScribeKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -773,7 +773,7 @@
 		};
 		E1AA00000000000000000002 /* MeetingScribeKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E1AA00000000000000000001 /* XCLocalSwiftPackageReference "../Транскрибация" */;
+			package = E1AA00000000000000000001 /* XCLocalSwiftPackageReference "MeetingScribeKit" */;
 			productName = MeetingScribeKit;
 		};
 /* End XCSwiftPackageProductDependency section */

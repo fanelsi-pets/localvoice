@@ -37,6 +37,8 @@ build/
 .xcode-debug/
 .build-tools/
 dist/
+MeetingScribeKit/.build/
+MeetingScribeKit/.swiftpm/
 *.dmg
 localization/translation-cache.json
 

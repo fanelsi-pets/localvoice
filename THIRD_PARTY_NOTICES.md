@@ -15,8 +15,9 @@ Nothing in the Local Voice name, icon, or documentation implies endorsement by t
 
 ## Meetings (MeetingScribe core)
 
-The Meetings feature is the MeetingScribe core (`MeetingScribeKit`, Swift package by Ivan Minin) embedded as a
-dependency. It brings these open-source components and models:
+The Meetings feature is the MeetingScribe core (`MeetingScribeKit`, Swift package by Ivan Minin) vendored in
+this repository under `MeetingScribeKit/` and distributed under the same GPL-3.0 as Local Voice. It brings these
+open-source components and models:
 
 - [argmaxinc/argmax-oss-swift](https://github.com/argmaxinc/argmax-oss-swift) 1.1.0 — WhisperKit and SpeakerKit (MIT), with vendored Hub/Tokenizers from swift-transformers (Apache-2.0).
 - [groue/GRDB.swift](https://github.com/groue/GRDB.swift) 7.11.1 (MIT) — meeting library and full-text search on the system SQLite.
@@ -25,4 +26,4 @@ dependency. It brings these open-source components and models:
   pyannote speaker-diarization community-1 for SpeakerKit and FluidAudio (CC BY 4.0 — attribution required);
   NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0).
 
-Sparkle is a dependency of the MeetingScribe package but is not linked into Local Voice; updates keep coming through GitHub Releases.
+Updates keep coming through GitHub Releases; the upstream package's Sparkle updater is not part of this copy.
