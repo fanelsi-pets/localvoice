@@ -44,6 +44,7 @@ NATIVE_KEYS = {
     "macOS %@ or later": "macOS %@ або новіша",
     "Apple Silicon": "Apple Silicon",
     "%@ requires %@. This Mac stays on the current version.": "%@ потребує %@. Цей Mac залишається на поточній версії.",
+    "Add a Gemini API key in AI Models to generate follow-ups.": "Додайте ключ Gemini API в розділі «Моделі AI», щоб створювати follow-up.",
 }
 
 

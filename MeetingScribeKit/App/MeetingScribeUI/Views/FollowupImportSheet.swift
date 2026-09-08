@@ -1,3 +1,4 @@
+import AppKit
 import Core
 import Export
 import Store
@@ -18,6 +19,7 @@ struct FollowupImportSheet: View {
   @State private var source: FollowupSource = .pasted
   @State private var projectChoice: ProjectChoice = .none
   @State private var newProjectName = ""
+  @State private var isExporting = false
 
   /// Один пункт предпросмотра: включён ли он и что именно запишется.
   private struct DraftItem: Identifiable, Hashable {
@@ -52,6 +54,12 @@ struct FollowupImportSheet: View {
     .frame(minWidth: 560, minHeight: 520)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("followup.sheet")
+    .fileExporter(
+      isPresented: $isExporting,
+      document: TranscriptDocument(text: text, contentType: ExportFormat.markdown.contentType),
+      contentType: ExportFormat.markdown.contentType,
+      defaultFilename: exportFileName
+    ) { _ in }
     .onAppear {
       if model.followupStartsGeneration {
         model.followupStartsGeneration = false
@@ -62,15 +70,40 @@ struct FollowupImportSheet: View {
     // разбор чинит JSON и пробует markdown — на незакрытом блоке это лишняя работа главного актора.
     .onChange(of: model.followupGeneration.text) { _, generated in
       guard !generated.isEmpty else { return }
-      source = .localLLM
+      source = generatedSource
       text = generated
     }
     .onChange(of: model.followupGeneration.finishedText) { _, finished in
       guard let finished, !finished.isEmpty else { return }
-      source = .localLLM
+      source = generatedSource
       text = finished
       reparse()
     }
+  }
+
+  /// Чей ответ: провайдера хоста или локальной модели (для истории follow-up).
+  private var generatedSource: FollowupSource {
+    model.followupGenerator != nil ? .hostModel : .localLLM
+  }
+
+  private var followupLanguage: Binding<FollowupLanguage> {
+    Binding(
+      get: { model.settings.followupLanguage },
+      set: { model.settings.followupLanguage = $0 })
+  }
+
+  /// `[YYYY-MM-DD]_[Проект]_follow-up_имена_и_поручения.md` — формат из инструкции генерации.
+  private var exportFileName: String {
+    FollowupGenerationPrompt.fileName(
+      date: record?.date ?? record?.createdAt,
+      project: record.flatMap { model.projectName(for: $0) },
+      language: model.settings.followupLanguage)
+  }
+
+  private func copyText() {
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.setString(text, forType: .string)
   }
 
   // MARK: - Проект
@@ -124,7 +157,7 @@ struct FollowupImportSheet: View {
           reparse()
         }
         .disabled(text.isEmpty)
-        if model.settings.localLLMEnabled {
+        if let generator = model.activeFollowupGenerator {
           if model.followupGeneration.isRunning {
             Button("Отменить", role: .cancel) {
               model.followupGeneration.cancel()
@@ -133,12 +166,32 @@ struct FollowupImportSheet: View {
             }
             .accessibilityIdentifier("followup.cancelGeneration")
           } else {
-            Button("Сгенерировать локально") {
+            Picker("Язык follow-up", selection: followupLanguage) {
+              ForEach(FollowupLanguage.allCases, id: \.self) { language in
+                Text(language.title).tag(language)
+              }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .accessibilityIdentifier("followup.language")
+            Button("Сгенерировать (\(generator.title))") {
               model.startFollowupGeneration(meetingID: meetingID)
             }
-            .disabled(model.settings.localLLMConfiguration == nil)
+            .disabled(!generator.isAvailable)
+            .help(
+              generator.unavailableReason
+                ?? String(localized: "Отправить транскрипт модели и разобрать её ответ")
+            )
             .accessibilityIdentifier("followup.generate")
           }
+        }
+      }
+      if !text.isEmpty, !model.followupGeneration.isRunning {
+        HStack {
+          Button("Скопировать follow-up") { copyText() }
+            .accessibilityIdentifier("followup.copy")
+          Button("Сохранить .md…") { isExporting = true }
+            .accessibilityIdentifier("followup.save")
         }
       }
       if model.followupGeneration.isRunning {

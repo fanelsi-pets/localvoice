@@ -1,4 +1,5 @@
 import Core
+import Export
 import Foundation
 import LocalLLM
 import Observation
@@ -26,6 +27,7 @@ public final class AppSettings {
     public static let localLLMEnabled = "localLLMEnabled"
     public static let localLLMBaseURL = "localLLMBaseURL"
     public static let localLLMModel = "localLLMModel"
+    public static let followupLanguage = "followupLanguage"
     /// Фаза 5: онбординг первого запуска пройден или пропущен (SPEC.md §2 п. 8).
     public static let onboardingCompleted = "onboardingCompleted"
     /// Языки встреч (коды ISO-639-1) — кандидаты маршрутизатора языков (SPEC.md §3.2).
@@ -109,6 +111,10 @@ public final class AppSettings {
     didSet { defaults.set(localLLMBaseURL, forKey: Key.localLLMBaseURL) }
   }
   /// Идентификатор модели у сервера (`id` из `/v1/models`).
+  /// Язык follow-up, который просят у модели (SPEC.md §3.6): русский по умолчанию, украинский по выбору.
+  public var followupLanguage: FollowupLanguage {
+    didSet { defaults.set(followupLanguage.rawValue, forKey: Key.followupLanguage) }
+  }
   public var localLLMModel: String {
     didSet { defaults.set(localLLMModel, forKey: Key.localLLMModel) }
   }
@@ -204,6 +210,8 @@ public final class AppSettings {
       defaults.string(forKey: Key.localLLMBaseURL)?.nilIfEmpty
       ?? LocalLLMConfiguration.lmStudioDefaultURL.absoluteString
     localLLMModel = defaults.string(forKey: Key.localLLMModel) ?? ""
+    followupLanguage =
+      defaults.string(forKey: Key.followupLanguage).flatMap(FollowupLanguage.init(rawValue:)) ?? .ru
     onboardingCompleted = defaults.bool(forKey: Key.onboardingCompleted)
     meetingLanguageCodes = Self.languageCodes(from: defaults)
     #if DEBUG

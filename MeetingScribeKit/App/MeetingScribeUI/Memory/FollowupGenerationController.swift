@@ -1,4 +1,5 @@
 import Core
+import Export
 import Foundation
 import LocalLLM
 import Observation
@@ -24,12 +25,19 @@ public final class FollowupGenerationController {
 
   public init() {}
 
-  /// Запускает поток дельт. Клиент передаётся параметром: тест подставляет сессию-заглушку.
+  /// Локальная модель: клиент передаётся параметром — тест подставляет сессию-заглушку.
   public func start(
     prompt: String,
     configuration: LocalLLMConfiguration,
     client: LocalLLMClient = LocalLLMClient()
   ) {
+    start(
+      prompt: prompt,
+      generator: LocalLLMFollowupGenerator(configuration: configuration, client: client))
+  }
+
+  /// Запускает поток кусков ответа генератора — локальной модели или провайдера хоста (ADR-010).
+  public func start(prompt: String, generator: any FollowupGenerating) {
     guard !isRunning else { return }
     isRunning = true
     text = ""
@@ -50,7 +58,7 @@ public final class FollowupGenerationController {
 
     task = Task { [weak self] in
       do {
-        for try await delta in client.streamChat(prompt: prompt, configuration: configuration) {
+        for try await delta in generator.generate(prompt: prompt) {
           guard let self, !Task.isCancelled else { return }
           self.text += delta
           self.characterCount = self.text.count
@@ -101,26 +109,39 @@ public final class FollowupGenerationController {
 }
 
 extension AppModel {
-  /// «Сгенерировать локально»: промпт — тот же TranscribeFull, который пользователь отдал бы внешней
-  /// модели (с инструкцией follow-up в конце). Транскрипт уходит только на адрес из настроек.
+  /// Генератор для кнопок «Создать follow-up»: провайдер хоста, если задан (LocalVoice — Gemini, ADR-010),
+  /// иначе локальная модель, если включена в настройках; `nil` — кнопок нет.
+  public var activeFollowupGenerator: (any FollowupGenerating)? {
+    if let followupGenerator { return followupGenerator }
+    guard settings.localLLMEnabled else { return nil }
+    return LocalLLMFollowupGenerator(configuration: settings.localLLMConfiguration)
+  }
+
+  /// «Создать follow-up»: промпт — инструкция владельца проекта на выбранном языке
+  /// (`FollowupGenerationPrompt`) плюс TranscribeFull без собственной инструкции экспорта. Транскрипт
+  /// уходит только выбранному генератору.
   public func startFollowupGeneration(meetingID: UUID) {
-    guard let configuration = settings.localLLMConfiguration else {
+    // Без генератора хоста и с выключенной локальной моделью запуск (⌘-команда, тест) объясняет, что включить.
+    let generator =
+      activeFollowupGenerator
+      ?? LocalLLMFollowupGenerator(configuration: settings.localLLMConfiguration)
+    guard generator.isAvailable else {
       alert = AppAlert(
-        title: String(localized: "Локальная модель не настроена"),
-        message:
-          String(
-            localized:
-              "Включите её в «Настройки → Follow-up», укажите адрес сервера (LM Studio или Ollama) и выберите модель."
-          ))
+        title: generator is LocalLLMFollowupGenerator
+          ? String(localized: "Локальная модель не настроена")
+          : String(localized: "Генератор недоступен"),
+        message: generator.unavailableReason)
       return
     }
-    guard let prompt = renderMarkdown(for: meetingID) else {
+    guard let transcript = renderMarkdown(for: meetingID, includeFollowupPrompt: false) else {
       alert = AppAlert(
         title: String(localized: "Нечего отправлять"),
         message: String(localized: "У встречи ещё нет транскрипта: обработайте запись и повторите.")
       )
       return
     }
-    followupGeneration.start(prompt: prompt, configuration: configuration)
+    let prompt = FollowupGenerationPrompt.render(
+      language: settings.followupLanguage, transcript: transcript)
+    followupGeneration.start(prompt: prompt, generator: generator)
   }
 }

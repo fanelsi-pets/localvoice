@@ -135,11 +135,15 @@ struct ProjectContextInspector: View {
         .help("Follow-up прошлых встреч проекта по датам, целиком")
         .accessibilityIdentifier("followup.history")
       }
-      if model.settings.localLLMEnabled {
-        Button("Сгенерировать локально", systemImage: "cpu") {
+      if let generator = model.activeFollowupGenerator {
+        Button("Создать follow-up", systemImage: "sparkles") {
           model.beginFollowupImport(meetingID: record.id, generate: true)
         }
-        .help("Отправить транскрипт локальной модели и разобрать её ответ")
+        .disabled(!generator.isAvailable)
+        .help(
+          generator.unavailableReason
+            ?? String(localized: "Отправить транскрипт модели и разобрать её ответ")
+        )
         .accessibilityIdentifier("followup.generate.inspector")
       }
     }

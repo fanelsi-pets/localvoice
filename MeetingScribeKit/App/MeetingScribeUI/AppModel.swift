@@ -300,6 +300,8 @@ public final class AppModel {
   public internal(set) var pendingVaultScope: VaultScope?
   /// Генерация follow-up локальной моделью: состояние живёт в модели, диалог можно закрыть и открыть.
   public let followupGeneration = FollowupGenerationController()
+  /// Генератор follow-up приложения-хоста (ADR-010: LocalVoice — Gemini); `nil` — только локальная модель.
+  public var followupGenerator: (any FollowupGenerating)?
   /// Прогресс экспорта vault: полоса «N из M заметок», пульс и отмена (SPEC.md §3.7).
   public let vaultExport = VaultExportController()
   /// «Переназначить спикера…» ⌘⇧S для выбранной реплики (фаза 3).
@@ -991,17 +993,18 @@ public final class AppModel {
   // MARK: - Экспорт
 
   /// Markdown `TranscribeFull` открытой или указанной встречи — один рендер для копирования и сохранения.
-  public func renderMarkdown(for id: UUID) -> String? {
+  public func renderMarkdown(for id: UUID, includeFollowupPrompt: Bool = true) -> String? {
     guard let transcript = displayTranscript(for: id) else { return nil }
     let record = library.meeting(id: id)
-    return TranscribeFullExporter.render(
-      transcript,
-      options: TranscribeFullOptions(
-        tenths: settings.tenthsInTimecodes,
-        markOverlap: settings.markOverlap,
-        projectContext: settings.includeProjectContext ? projectContext(for: id) : nil,
-        processedAt: record?.processedAt,
-        timeZone: Self.contextTimeZone))
+    var options = TranscribeFullOptions(
+      tenths: settings.tenthsInTimecodes,
+      markOverlap: settings.markOverlap,
+      projectContext: settings.includeProjectContext ? projectContext(for: id) : nil,
+      processedAt: record?.processedAt,
+      timeZone: Self.contextTimeZone)
+    // Для генерации инструкция экспорта не нужна: промпт генератора задаёт свою.
+    options.includeFollowupPrompt = includeFollowupPrompt
+    return TranscribeFullExporter.render(transcript, options: options)
   }
 
   public func renderSRT(for id: UUID) -> String? {

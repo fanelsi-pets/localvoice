@@ -175,11 +175,14 @@ public struct QuestionRecord: Identifiable, Hashable, Codable, Sendable {
 public enum FollowupSource: String, Codable, Sendable {
   case pasted
   case localLLM
+  /// Провайдер приложения-хоста (ADR-010: LocalVoice — Gemini).
+  case hostModel
 
   public var title: String {
     switch self {
     case .pasted: String(localized: "Вставлен вручную")
     case .localLLM: String(localized: "Локальная модель")
+    case .hostModel: String(localized: "Модель приложения-хоста")
     }
   }
 }

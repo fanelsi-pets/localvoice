@@ -93,6 +93,7 @@ struct LocalVoiceApp: App {
         // Initialize services with proper sharing of instances
         let aiService = AIService()
         _aiService = StateObject(wrappedValue: aiService)
+        MeetingsHost.shared.attachAIService(aiService)
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)

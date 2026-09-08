@@ -84,6 +84,11 @@ final class MeetingsHost {
         }
     }
 
+    /// Follow-ups go through the app's Gemini key (free tier); called once from `LocalVoiceApp.init`.
+    func attachAIService(_ aiService: AIService) {
+        model.followupGenerator = GeminiFollowupGenerator(aiService: aiService)
+    }
+
     // MARK: - Facade for AppKit code that does not import the core
 
     /// Current processing, if any: meeting id, headline ("stage · percent · estimate") and pulse line.

@@ -21,7 +21,7 @@ struct SettingsView: View {
       PeopleSettings(model: model, settings: model.settings)
         .tabItem { Label(SettingsTab.people.title, systemImage: "person.wave.2") }
         .tag(SettingsTab.people)
-      FollowupSettings(settings: model.settings)
+      FollowupSettings(settings: model.settings, generatorTitle: model.followupGenerator?.title)
         .tabItem { Label(SettingsTab.followup.title, systemImage: "arrow.uturn.forward") }
         .tag(SettingsTab.followup)
       DiagnosticsSettings(model: model)
@@ -336,6 +336,8 @@ struct PeopleSettings: View {
 /// Follow-up (SPEC.md §3.6): контекст проекта в экспорте и необязательная локальная модель.
 struct FollowupSettings: View {
   @Bindable var settings: AppSettings
+  /// Название генератора хоста (ADR-010), если он задан, — подпись «Follow-up создаёт: …».
+  var generatorTitle: String? = nil
   @State private var models: [LocalLLMModel] = []
   @State private var statusText: String?
   /// Красным красится только настоящая неудача: «список моделей пуст» — это подсказка, а не ошибка.
@@ -351,6 +353,19 @@ struct FollowupSettings: View {
         )
         .font(.caption)
         .foregroundStyle(.secondary)
+      }
+      Section("Генерация follow-up") {
+        Picker("Язык follow-up", selection: $settings.followupLanguage) {
+          ForEach(FollowupLanguage.allCases, id: \.self) { language in
+            Text(language.title).tag(language)
+          }
+        }
+        .accessibilityIdentifier("settings.followup.language")
+        if let generatorTitle {
+          Text("Follow-up создаёт: \(generatorTitle)")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       }
       Section("Локальная языковая модель (необязательно)") {
         Toggle("Генерировать follow-up локальной моделью", isOn: $settings.localLLMEnabled)

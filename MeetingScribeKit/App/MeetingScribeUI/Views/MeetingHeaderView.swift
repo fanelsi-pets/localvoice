@@ -26,6 +26,22 @@ struct MeetingHeaderView: View {
         StatusBadge(status: record.status)
           .accessibilityIdentifier("meeting.status")
         Spacer()
+        // «Создать follow-up» появляется у обработанной встречи, когда есть генератор (ADR-010): промпт с
+        // выбранным языком уходит модели, ответ показывается в листе follow-up и сохраняется в проект.
+        if let generator = model.activeFollowupGenerator, record.status == .ready {
+          Button {
+            model.beginFollowupImport(meetingID: record.id, generate: true)
+          } label: {
+            Label("Создать follow-up", systemImage: "sparkles")
+          }
+          .buttonStyle(.borderedProminent)
+          .disabled(!generator.isAvailable)
+          .help(
+            generator.unavailableReason
+              ?? String(localized: "Отправить транскрипт модели и разобрать её ответ")
+          )
+          .accessibilityIdentifier("meeting.createFollowup")
+        }
         followupMenu
         playButton
       }
