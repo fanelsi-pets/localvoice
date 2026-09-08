@@ -26034,6 +26034,23 @@
           }
         }
       }
+    },
+    "%@: лучшее качество на русском и украинском" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: the best quality for Russian and Ukrainian"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: найкраща якість російською та українською"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

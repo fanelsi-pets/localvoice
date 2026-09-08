@@ -1,4 +1,5 @@
 import AppKit
+import Core
 import Foundation
 import MeetingScribeUI
 import OSLog
@@ -11,6 +12,11 @@ import OSLog
 final class MeetingsHost {
     static let shared = MeetingsHost()
     static let windowID = "meetings"
+    /// Maximum quality by default: WhisperKit large-v3 (not turbo) with SpeakerKit diarization; users who
+    /// prefer speed pick turbo or Parakeet in Meeting Settings.
+    static let defaultEngines = EngineSelection(
+        asr: .whisperkit, whisperModel: .whisperLargeV3, diarizer: .speakerkit)
+    private static let appliedDefaultEnginesKey = "MeetingsAppliedMaxQualityDefault"
 
     let model: MeetingScribeUI.AppModel
     let dataDirectory: URL
@@ -26,9 +32,18 @@ final class MeetingsHost {
         dataDirectory = appSupport.appendingPathComponent("Meetings", isDirectory: true)
         model = MeetingScribeUI.AppModel.live(
             libraryDirectory: dataDirectory,
-            modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true)
+            modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true),
+            defaultEngines: Self.defaultEngines
         )
         model.windowTitle = String(localized: "Meetings")
+        // One-time: builds before this default stored turbo through onboarding; move WhisperKit users to
+        // large-v3 once, keep an explicit Parakeet choice.
+        if !UserDefaults.standard.bool(forKey: Self.appliedDefaultEnginesKey) {
+            if model.settings.engines.asr == .whisperkit {
+                model.settings.engines = Self.defaultEngines
+            }
+            UserDefaults.standard.set(true, forKey: Self.appliedDefaultEnginesKey)
+        }
     }
 
     /// Called by `MeetingsWindowRequestBridge` once SwiftUI can open windows.
