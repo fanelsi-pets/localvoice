@@ -134,7 +134,8 @@ struct FollowupImportSheet: View {
     Section("Ответ модели") {
       TextEditor(text: $text)
         .font(.body.monospaced())
-        .frame(minHeight: 120)
+        // Длинный ответ прокручивается внутри поля: предпросмотр и футер остаются под рукой.
+        .frame(minHeight: 120, maxHeight: 360)
         .onChange(of: text) { _, _ in
           // Ручной ввод и вставка; ответ модели разбирается по окончании генерации.
           guard !model.followupGeneration.isRunning else { return }

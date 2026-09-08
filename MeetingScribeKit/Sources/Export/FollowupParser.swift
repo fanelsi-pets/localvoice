@@ -89,7 +89,16 @@ public enum FollowupParser {
   public static func parse(_ text: String) -> ParsedFollowup {
     let normalized = normalize(text)
     var warnings: [String] = []
-    let blocks = fencedBlocks(in: normalized)
+    var blocks = fencedBlocks(in: normalized, requireTag: true)
+    if blocks.isEmpty {
+      // Модель оградила блок как ```json или без слова (так делает Gemini): принимаем последний
+      // фенс-блок, внутри которого есть ожидаемые ключи.
+      let candidates = fencedBlocks(in: normalized, requireTag: false)
+      if let block = candidates.last(where: { looksLikeFollowup($0.content) }) {
+        blocks = [block]
+        warnings.append("блок оформлен как ```json без слова meeting-followup — принят по ключам")
+      }
+    }
     if blocks.count > 1 {
       warnings.append("найдено блоков meeting-followup: \(blocks.count) — разобран последний")
     }
@@ -139,12 +148,19 @@ public enum FollowupParser {
     var closed: Bool
   }
 
-  private static func fencedBlocks(in text: String) -> [Block] {
+  /// Есть ли в тексте блока ключи структуры follow-up — для блоков без слова meeting-followup.
+  private static func looksLikeFollowup(_ content: String) -> Bool {
+    ["\"decisions\"", "\"actions\"", "\"questions\"", "\"summary\""].contains {
+      content.contains($0)
+    }
+  }
+
+  private static func fencedBlocks(in text: String, requireTag: Bool) -> [Block] {
     var blocks: [Block] = []
     let lines = text.components(separatedBy: "\n")
     var index = 0
     while index < lines.count {
-      guard let marker = openingFence(lines[index]) else {
+      guard let marker = openingFence(lines[index], requireTag: requireTag) else {
         index += 1
         continue
       }
@@ -165,8 +181,9 @@ public enum FollowupParser {
     return blocks
   }
 
-  /// Открывающий фенс блока: ``` или ~~~ (три и более) и слово meeting-followup в любом регистре.
-  private static func openingFence(_ line: String) -> Character? {
+  /// Открывающий фенс блока: ``` или ~~~ (три и более) и слово meeting-followup в любом регистре;
+  /// без `requireTag` — также пустая подпись или json (блок, который модель оформила иначе).
+  private static func openingFence(_ line: String, requireTag: Bool) -> Character? {
     let trimmed = line.trimmingCharacters(in: .whitespaces)
     guard let marker = trimmed.first, marker == "`" || marker == "~" else { return nil }
     let fence = trimmed.prefix { $0 == marker }
@@ -174,7 +191,9 @@ public enum FollowupParser {
     let info = trimmed.dropFirst(fence.count).trimmingCharacters(in: .whitespaces).lowercased()
     let normalized = info.replacingOccurrences(of: "_", with: "-")
       .replacingOccurrences(of: " ", with: "-")
-    return normalized.hasPrefix("meeting-followup") ? marker : nil
+    if normalized.hasPrefix("meeting-followup") { return marker }
+    guard !requireTag else { return nil }
+    return ["", "json", "jsonc", "json5"].contains(normalized) ? marker : nil
   }
 
   private static func isClosingFence(_ line: String, marker: Character) -> Bool {
