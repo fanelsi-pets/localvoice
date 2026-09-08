@@ -352,13 +352,13 @@ struct LocalVoiceApp: App {
                 }
             }
             .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
+            .background(MeetingsWindowRequestBridge())
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: AppWindowLayout.minimumWidth, height: AppWindowLayout.minimumHeight)
-        .commands {
-            CommandGroup(replacing: .newItem) {}
 
-        }
+        // Meetings (MeetingScribe core) in their own window; its commands replace the File → New group.
+        MeetingsScene()
 
         #if DEBUG
             WindowGroup("Debug") {

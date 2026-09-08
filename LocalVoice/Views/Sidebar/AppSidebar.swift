@@ -103,6 +103,7 @@ extension ViewType {
         .dashboard,
         .modes,
         .history,
+        .meetings,
         .dictionary,
         .models,
         .audio,
@@ -129,6 +130,7 @@ private extension ViewType {
         switch self {
         case .dashboard: return "gauge.medium"
         case .history: return "doc.text.fill"
+        case .meetings: return "person.2.wave.2.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"
         case .audio: return "mic.fill"
@@ -151,6 +153,8 @@ private extension ViewType {
             return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
             return .init(background: AppTheme.Sidebar.audio)
+        case .meetings:
+            return .init(background: AppTheme.Sidebar.meetings)
         case .settings:
             return .init(background: AppTheme.Sidebar.fallback)
         }

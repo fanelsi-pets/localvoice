@@ -130,6 +130,33 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         menu.addItem(header)
         menu.addItem(.separator())
 
+        let meetingsItem = NSMenuItem(
+            title: String(localized: "Meetings…"),
+            action: #selector(openMeetingsFromStatusItem),
+            keyEquivalent: ""
+        )
+        meetingsItem.target = self
+        menu.addItem(meetingsItem)
+        if let processing = MeetingsHost.shared.processingSummary {
+            let status = NSMenuItem(title: processing.headline, action: nil, keyEquivalent: "")
+            status.isEnabled = false
+            menu.addItem(status)
+            if !processing.pulse.isEmpty {
+                let pulse = NSMenuItem(title: processing.pulse, action: nil, keyEquivalent: "")
+                pulse.isEnabled = false
+                menu.addItem(pulse)
+            }
+            let cancel = NSMenuItem(
+                title: String(localized: "Cancel Processing"),
+                action: #selector(cancelMeetingProcessingFromStatusItem(_:)),
+                keyEquivalent: ""
+            )
+            cancel.target = self
+            cancel.representedObject = processing.meetingID.uuidString
+            menu.addItem(cancel)
+        }
+        menu.addItem(.separator())
+
         let languageMenu = NSMenu(title: String(localized: "Dictation Language"))
         let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
         for language in [("uk", "Українська"), ("ru", "Русский"), ("en", "English")] {
@@ -224,6 +251,17 @@ class MenuBarManager: NSObject, ObservableObject, NSMenuDelegate {
         )
         quit.target = self
         menu.addItem(quit)
+    }
+
+    @objc private func openMeetingsFromStatusItem() {
+        MeetingsHost.shared.openWindow()
+    }
+
+    @objc private func cancelMeetingProcessingFromStatusItem(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let meetingID = UUID(uuidString: raw) else {
+            return
+        }
+        MeetingsHost.shared.cancelProcessing(meetingID)
     }
 
     private func fetchRecentTranscriptions(limit: Int = 6) -> [(preview: String, text: String)] {

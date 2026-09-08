@@ -14,6 +14,15 @@ Local Voice uses local transcription by default. It also offers an explicit opt-
 
 When Gemini is selected, recorded audio and the transcription instruction are sent to the Google Gemini Developer API. The API key is stored in the macOS Keychain. Local Voice uses `gemini-2.5-flash-lite`, Google's smallest stable cost-efficient multimodal model. Do not select Gemini when the recording must remain entirely on-device.
 
+## Meetings
+
+The Meetings feature (MeetingScribe core) transcribes Zoom recordings entirely on this Mac: speaker separation,
+recognition, names and project memory never leave the device. Its only network use is downloading open-source
+models from Hugging Face on first use (already allowed by `LocalOnlyNetworkBlocker`) and, optionally, a local
+language model at a localhost address that the user configures. Recordings you import are read through
+security-scoped bookmarks inside the sandbox; exports are written only to files and folders you choose, which is why
+the entitlements now include `com.apple.security.files.user-selected.read-write`.
+
 ## Data locations
 
 Application data is stored in the user's Application Support container. Audio retention and transcript retention can be configured inside the app. Export operations only write to locations explicitly selected by the user.

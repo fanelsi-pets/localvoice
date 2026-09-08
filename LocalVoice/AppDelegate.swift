@@ -57,6 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         WindowManager.shared.prepareForApplicationTermination()
-        return .terminateNow
+        // Meetings: confirmation while a recording is being processed, short wait for the library to save.
+        return MeetingsHost.shared.applicationShouldTerminate(sender)
     }
 }
