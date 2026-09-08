@@ -115,6 +115,69 @@ public enum FollowupParser {
     return fallback
   }
 
+  // MARK: - Документ без служебного блока
+
+  /// Делит ответ модели на документ для читателя и служебный блок follow-up. Блок — фенс meeting-followup
+  /// либо ```json/без подписи с ключами структуры — убирается из текста вместе с незакрытым хвостом при
+  /// стриминге и заголовком, под которым он один стоял («## Служебный блок»); посторонние код-блоки
+  /// остаются. Нет блока — документ равен исходному тексту, `machineBlock == nil`. Несколько блоков
+  /// склеиваются пустой строкой: `parse` возьмёт последний.
+  public static func split(_ text: String) -> (document: String, machineBlock: String?) {
+    let lines = normalize(text).components(separatedBy: "\n")
+    var kept: [String] = []
+    var blocks: [String] = []
+    var index = 0
+    while index < lines.count {
+      // Любой фенс открывает блок (как в Markdown): иначе закрывающие ``` чужого код-блока
+      // читались бы как открывающие без подписи.
+      guard let marker = fenceMarker(lines[index]) else {
+        kept.append(lines[index])
+        index += 1
+        continue
+      }
+      let opening = lines[index]
+      var body: [String] = []
+      var cursor = index + 1
+      while cursor < lines.count {
+        if isClosingFence(lines[cursor], marker: marker) {
+          cursor += 1
+          break
+        }
+        body.append(lines[cursor])
+        cursor += 1
+      }
+      let tagged = openingFence(opening, requireTag: true) != nil
+      let untaggedFollowup =
+        openingFence(opening, requireTag: false) != nil
+        && looksLikeFollowup(body.joined(separator: "\n"))
+      if tagged || untaggedFollowup {
+        blocks.append(lines[index..<cursor].joined(separator: "\n"))
+      } else {
+        kept.append(contentsOf: lines[index..<cursor])
+      }
+      index = cursor
+    }
+    guard !blocks.isEmpty else { return (text, nil) }
+    func trimTrailingBlank() {
+      while let last = kept.last, last.trimmingCharacters(in: .whitespaces).isEmpty {
+        kept.removeLast()
+      }
+    }
+    trimTrailingBlank()
+    if let last = kept.last, last.trimmingCharacters(in: .whitespaces).hasPrefix("#") {
+      kept.removeLast()
+      trimTrailingBlank()
+    }
+    return (kept.joined(separator: "\n"), blocks.joined(separator: "\n\n"))
+  }
+
+  /// Маркер любого фенса кода (``` или ~~~ трижды и более) независимо от подписи.
+  private static func fenceMarker(_ line: String) -> Character? {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    guard let marker = trimmed.first, marker == "`" || marker == "~" else { return nil }
+    return trimmed.prefix { $0 == marker }.count >= 3 ? marker : nil
+  }
+
   // MARK: - Подготовка текста
 
   /// CRLF → LF, прочь BOM и символы нулевой ширины, неразрывные пробелы — обычными.

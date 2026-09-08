@@ -12,6 +12,9 @@ struct FollowupImportSheet: View {
   let meetingID: UUID
 
   @State private var text = ""
+  /// Служебный блок ```meeting-followup сгенерированного ответа: читателю не показывается, парсер
+  /// получает его вместе с документом из редактора.
+  @State private var machineBlock: String?
   @State private var parsed = ParsedFollowup()
   @State private var decisions: [DraftItem] = []
   @State private var actions: [DraftItem] = []
@@ -71,14 +74,22 @@ struct FollowupImportSheet: View {
     .onChange(of: model.followupGeneration.text) { _, generated in
       guard !generated.isEmpty else { return }
       source = generatedSource
-      text = generated
+      showGenerated(generated)
     }
     .onChange(of: model.followupGeneration.finishedText) { _, finished in
       guard let finished, !finished.isEmpty else { return }
       source = generatedSource
-      text = finished
+      showGenerated(finished)
       reparse()
     }
+  }
+
+  /// Ответ модели на экране — документ без служебного блока; сам блок хранится отдельно для разбора,
+  /// поэтому копирование, сохранение .md и история получают чистый документ.
+  private func showGenerated(_ response: String) {
+    let (document, block) = FollowupParser.split(response)
+    text = document
+    machineBlock = block
   }
 
   /// Чей ответ: провайдера хоста или локальной модели (для истории follow-up).
@@ -149,12 +160,14 @@ struct FollowupImportSheet: View {
         PasteButton(payloadType: String.self) { strings in
           guard let pasted = strings.first(where: { !$0.isEmpty }) else { return }
           source = .pasted
+          machineBlock = nil
           text = pasted
         }
         .accessibilityIdentifier("followup.paste")
         .accessibilityLabel("Вставить ответ модели из буфера обмена")
         Button("Очистить") {
           text = ""
+          machineBlock = nil
           reparse()
         }
         .disabled(text.isEmpty)
@@ -330,7 +343,9 @@ struct FollowupImportSheet: View {
   // MARK: - Действия
 
   private func reparse() {
-    let result = FollowupParser.parse(text)
+    // Скрытый блок разбирается вместе с документом: правки текста в редакторе не теряют структуру.
+    let input = machineBlock.map { text + "\n\n" + $0 } ?? text
+    let result = FollowupParser.parse(input)
     parsed = result
     decisions = result.decisions.enumerated().map {
       DraftItem(id: $0.offset, text: $0.element.text)
