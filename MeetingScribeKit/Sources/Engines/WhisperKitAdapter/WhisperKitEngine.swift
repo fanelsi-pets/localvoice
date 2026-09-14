@@ -217,12 +217,22 @@ public actor WhisperKitEngine: AsrEngine {
       let engine = try await loadedEngine(progress: progress)
       let language = try await resolvedLanguage(
         requested: options.language, head: Self.head(of: audio), engine: engine, progress: progress)
-      let decodeOptions = WhisperKitMapping.decodingOptions(
-        language: language, wordTimestamps: options.wordTimestamps, clips: options.clips)
       let tracker = WhisperKitProgressTracker(
         totalAudioSeconds: audio.duration, timeOffset: options.timeOffset)
       let sink = progress
       let offset = options.timeOffset
+      // Границы клипов приводятся к буферу (`WhisperKitMapping.clampedClipBoundary`): WhisperKit режет
+      // `audioArray[start..<end]` без проверки, а `Float(секунды)` на длинных записях округляется за конец буфера.
+      let clipTimestamps = WhisperKitMapping.clipTimestamps(
+        options.clips, sampleCount: audio.sampleCount)
+      if !options.clips.isEmpty, clipTimestamps.isEmpty {
+        // Все клипы оказались вне буфера или пустыми: распознавать нечего. Пустой список клипов для WhisperKit
+        // означал бы «весь файл» — вместо этого вызов завершается без сегментов.
+        sink?(tracker.completionEvent())
+        return []
+      }
+      let decodeOptions = WhisperKitMapping.decodingOptions(
+        language: language, wordTimestamps: options.wordTimestamps, clipTimestamps: clipTimestamps)
 
       // Чанковый путь (`chunkingStrategy: .vad`) берёт только колбэк экземпляра и сам добавляет смещение чанка
       // (WhisperKit.swift:846–852); параметр `segmentCallback` доходит лишь до аудио короче одного окна.

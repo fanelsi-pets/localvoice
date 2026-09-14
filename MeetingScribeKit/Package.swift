@@ -1,7 +1,8 @@
 // swift-tools-version: 6.2
 // MeetingScribe core (product `MeetingScribeKit`) vendored into Local Voice — see README.md in this folder.
 // Kept identical to the upstream package except for what Local Voice does not use: the Sparkle updater target,
-// the command-line tool and the test targets.
+// the command-line tool and most test targets. `EngineTests` (WhisperKit adapter) is kept: run
+// `swift test --package-path MeetingScribeKit --filter EngineTests` from the repository root.
 
 import PackageDescription
 
@@ -99,6 +100,16 @@ let package = Package(
       // Built-in self-test sample (28 s, two synthesized voices) and its manifest.
       resources: [.process("Resources")],
       swiftSettings: [.defaultIsolation(MainActor.self)]
+    ),
+    // Pure-function tests of the WhisperKit adapter (no models, no network): clip boundaries against the
+    // WhisperKit chunker, result mapping, progress tracking, model plan.
+    .testTarget(
+      name: "EngineTests",
+      dependencies: [
+        "Core", "WhisperKitAdapter",
+        .product(name: "WhisperKit", package: "argmax-oss-swift"),
+      ],
+      path: "Tests/EngineTests"
     ),
   ]
 )

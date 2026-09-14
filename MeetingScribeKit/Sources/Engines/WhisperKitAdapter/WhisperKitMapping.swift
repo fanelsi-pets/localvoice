@@ -91,14 +91,61 @@ enum WhisperKitMapping {
       .map(\.element)
   }
 
-  /// Клипы `AsrOptions.clips` в `clipTimestamps` WhisperKit: пары секунд «начало, конец».
+  // MARK: - Клипы
+
+  /// Секунды → индекс сэмпла ровно так, как это делает WhisperKit 1.1.0 (`DecodingOptions.prepareSeekClips`,
+  /// Utilities/Extensions+Internal.swift:113): `Int(round(seconds * Float(WhisperKit.sampleRate)))`.
+  /// Арифметика Float32 повторена один в один: от неё зависит, попадёт ли граница клипа в буфер.
+  /// Функция тотальна: NaN → 0, ±inf и значения вне `Int` → `Int.max`/`Int.min`, трапа `Int(Float)` нет.
+  static func whisperKitSampleIndex(_ seconds: Float) -> Int {
+    let scaled = seconds * Float(WhisperKit.sampleRate)
+    if scaled.isNaN { return 0 }
+    if scaled >= 9.0e18 { return .max }
+    if scaled <= -9.0e18 { return .min }
+    return Int(scaled.rounded())
+  }
+
+  /// Граница клипа в секундах Float32, безопасная для буфера из `sampleCount` сэмплов.
+  ///
+  /// WhisperKit не ограничивает `seekClipEnd` длиной буфера (`prepareSeekClips`) и режет
+  /// `audioArray[start..<end]` в `VADAudioChunker.chunkAll` — граница за буфером убивает процесс.
+  /// `Float(секунды)` при длине от 2^24 сэмплов (≈17,5 мин) округляется на несколько сэмплов в любую сторону:
+  /// крэш LocalVoice 4.1.0 (2026-09-14) — буфер 75 450 341 сэмпл, конец клипа 75 450 344.
+  /// Значение прижимается к `[0, длительность]` и опускается по `nextDown`, пока WhisperKit не даст индекс
+  /// в пределах буфера (теряется не больше одной единицы Float32, ≤ 16 сэмплов при длине до 4,6 ч).
+  static func clampedClipBoundary(_ seconds: Double, sampleCount: Int) -> Float {
+    guard seconds.isFinite, sampleCount > 0 else { return 0 }
+    let limit = PCMAudio.seconds(forSampleIndex: sampleCount)
+    var value = Float(min(max(seconds, 0), limit))
+    guard value.isFinite else { return 0 }
+    while value > 0, whisperKitSampleIndex(value) > sampleCount {
+      value = value.nextDown
+    }
+    return max(value, 0)
+  }
+
+  /// Клипы `AsrOptions.clips` в `clipTimestamps` WhisperKit: пары секунд «начало, конец» по порядку, обе границы
+  /// приведены к буферу (`clampedClipBoundary`). Клипы с нечисловыми границами, целиком вне буфера или пустые
+  /// после приведения выбрасываются. Если выброшены все, результат пуст — вызывающий не должен превращать
+  /// это в «весь файл» (пустой список у WhisperKit означает именно это), см. `WhisperKitEngine.transcribe`.
   /// Проверено (WhisperKit 1.1.0): `VADAudioChunker.chunkAll` строит чанки внутри `prepareSeekClips`,
   /// смещения чанков применяются к сегментам и словам; клип короче `windowPadding` = 1 с пропускается.
-  static func clipTimestamps(_ clips: [ClosedRange<Double>]) -> [Float] {
-    clips
-      .filter { $0.upperBound > $0.lowerBound }
+  static func clipTimestamps(_ clips: [ClosedRange<Double>], sampleCount: Int) -> [Float] {
+    guard sampleCount > 0 else { return [] }
+    var result: [Float] = []
+    let ordered =
+      clips
+      .filter { $0.lowerBound.isFinite && $0.upperBound.isFinite }
       .sorted { $0.lowerBound < $1.lowerBound }
-      .flatMap { [Float($0.lowerBound), Float($0.upperBound)] }
+    for clip in ordered {
+      let start = clampedClipBoundary(clip.lowerBound, sampleCount: sampleCount)
+      let end = clampedClipBoundary(clip.upperBound, sampleCount: sampleCount)
+      let startIndex = whisperKitSampleIndex(start)
+      let endIndex = whisperKitSampleIndex(end)
+      guard startIndex < sampleCount, endIndex > startIndex else { continue }
+      result.append(contentsOf: [start, end])
+    }
+    return result
   }
 
   // MARK: - Язык
@@ -120,8 +167,11 @@ enum WhisperKitMapping {
   }
 
   /// Параметры декодирования (SPEC.md §3.2). Язык всегда задан явно: умолчание WhisperKit `nil` даёт английский.
+  ///
+  /// `clipTimestamps` — уже приведённые к буферу пары секунд из `clipTimestamps(_:sampleCount:)`;
+  /// пустой список означает «весь файл».
   static func decodingOptions(
-    language: Language, wordTimestamps: Bool, clips: [ClosedRange<Double>] = []
+    language: Language, wordTimestamps: Bool, clipTimestamps: [Float] = []
   ) -> DecodingOptions {
     DecodingOptions(
       task: .transcribe,
@@ -131,7 +181,7 @@ enum WhisperKitMapping {
       skipSpecialTokens: true,
       withoutTimestamps: false,
       wordTimestamps: wordTimestamps,
-      clipTimestamps: clipTimestamps(clips),
+      clipTimestamps: clipTimestamps,
       chunkingStrategy: .vad
     )
   }

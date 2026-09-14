@@ -40,3 +40,6 @@ jobs:
             -scheme LocalVoice \
             -destination 'platform=macOS' \
             test
+
+      - name: Run MeetingScribe core tests (WhisperKit adapter)
+        run: swift test --package-path MeetingScribeKit --filter EngineTests
