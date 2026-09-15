@@ -55,6 +55,8 @@ public struct PipelineConfiguration: Sendable {
   public var voiceSampleSeconds: Double
   /// Параметры детектора речи на раздельных дорожках (`PipelineInput.tracks`).
   public var speechActivity: SpeechActivityDetector.Options
+  /// Второй проход по пустым окнам распознавания (`EmptyWindowRecovery`).
+  public var recovery: EmptyWindowRecovery.Options
 
   public init(
     hints: DiarizationHints = .none,
@@ -68,7 +70,8 @@ public struct PipelineConfiguration: Sendable {
     asrRate: Double = 0.05,
     nameHints: [NameHint] = [],
     voiceSampleSeconds: Double = 60,
-    speechActivity: SpeechActivityDetector.Options = SpeechActivityDetector.Options()
+    speechActivity: SpeechActivityDetector.Options = SpeechActivityDetector.Options(),
+    recovery: EmptyWindowRecovery.Options = EmptyWindowRecovery.Options()
   ) {
     self.hints = hints
     self.skipDiarization = skipDiarization
@@ -82,6 +85,7 @@ public struct PipelineConfiguration: Sendable {
     self.nameHints = nameHints
     self.voiceSampleSeconds = voiceSampleSeconds
     self.speechActivity = speechActivity
+    self.recovery = recovery
   }
 }
 
@@ -318,7 +322,15 @@ public actor MeetingPipeline {
         aggregator.callCompleted(index)
         collected.append(contentsOf: result)
       }
-      return collected.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
+      // Второй проход: окна без токенов на речи пересчитываются отдельными вызовами (EmptyWindowRecovery).
+      let recovery = try await EmptyWindowRecovery.recover(
+        segments: collected.sorted { ($0.start, $0.end) < ($1.start, $1.end) },
+        audio: pcm, turns: diarization?.turns,
+        languageAt: { time in regions.first { $0.start <= time && time <= $0.end }?.language },
+        wordTimestamps: true, engine: asr, options: configuration.recovery,
+        discovered: collector.sink, progress: reporter.sink)
+      run.recovered.append(contentsOf: recovery.recovered)
+      return recovery.segments
     }
 
     // 5. Фильтр галлюцинаций и сшивка.
@@ -497,7 +509,15 @@ public actor MeetingPipeline {
           progress: aggregator.sink(forCall: call, base: reporter.sink),
           discovered: collector.sink(forTrack: track.speakerID))
         aggregator.callCompleted(call)
-        collected[track.speakerID] = segments.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
+        // Второй проход по пустым окнам дорожки: язык дорожки, речь — по её детектору.
+        let trackLanguage = track.language
+        let recovery = try await EmptyWindowRecovery.recover(
+          segments: segments.sorted { ($0.start, $0.end) < ($1.start, $1.end) },
+          audio: pcm, turns: track.turns, languageAt: { _ in trackLanguage },
+          wordTimestamps: true, engine: asr, options: configuration.recovery,
+          discovered: collector.sink(forTrack: track.speakerID), progress: reporter.sink)
+        run.recovered.append(contentsOf: recovery.recovered)
+        collected[track.speakerID] = recovery.segments
       }
       return collected
     }
@@ -508,7 +528,7 @@ public actor MeetingPipeline {
         tracks: run.tracks, segmentsByTrack: segmentsByTrack, mix: mix, duration: meetingSeconds,
         configuration: configuration, engines: run.engineInfo,
         speakerLanguages: speakerLanguages, regions: regions, timings: run.timings,
-        createdAt: Self.wholeSeconds(Date()))
+        createdAt: Self.wholeSeconds(Date()), recovered: run.recovered)
       return Assembled(transcript: result.transcript, report: result.report)
     }
 
@@ -754,7 +774,7 @@ public actor MeetingPipeline {
         duration: run.tracks.map(\.duration).max() ?? 0,
         configuration: configuration, engines: run.engineInfo,
         speakerLanguages: run.partial.speakerLanguages, regions: run.partial.regions,
-        timings: run.timings, createdAt: wholeSeconds(Date())
+        timings: run.timings, createdAt: wholeSeconds(Date()), recovered: run.recovered
       ).transcript
     case .tracks(let tracks, let mix):
       let source = mix ?? tracks.first?.url ?? URL(fileURLWithPath: "/")
@@ -809,7 +829,8 @@ public actor MeetingPipeline {
       timings: run.timings,
       peakMemoryBytes: ProcessMemory.snapshot()?.peakResidentBytes,
       diagnostics: TranscriptDiagnostics(
-        dropped: report.dropped, regions: regions, noSpeechEvidence: report.noSpeechEvidence),
+        dropped: report.dropped, regions: regions, noSpeechEvidence: report.noSpeechEvidence,
+        recovered: run.recovered),
       speakerEmbeddings: embeddings)
     return Assembled(transcript: transcript, report: report)
   }
@@ -860,6 +881,8 @@ public actor MeetingPipeline {
     var diarizerDescriptor: EngineDescriptor?
     /// Раздельные дорожки прогона; пусто — обрабатывается общий трек.
     var tracks: [TrackRun] = []
+    /// Пустые окна, пересчитанные вторым проходом (для диагностики транскрипта).
+    var recovered: [RecoveredWindow] = []
 
     init(reporter: ProgressReporter) {
       self.reporter = reporter

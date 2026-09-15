@@ -101,19 +101,44 @@ public struct DroppedSegment: Hashable, Codable, Sendable {
   }
 }
 
+/// Пустое окно распознавания, пересчитанное вторым проходом (`EmptyWindowRecovery`).
+public struct RecoveredWindow: Hashable, Codable, Sendable {
+  public var start: Double
+  public var end: Double
+  /// Язык, с которым окно удалось распознать; nil — автоопределение движком или неудача.
+  public var language: Language?
+  /// Сколько вызовов понадобилось.
+  public var attempts: Int
+  /// Сколько сегментов найдено; 0 — окно так и осталось пустым.
+  public var segments: Int
+
+  public init(start: Double, end: Double, language: Language?, attempts: Int, segments: Int) {
+    self.start = start
+    self.end = end
+    self.language = language
+    self.attempts = attempts
+    self.segments = segments
+  }
+}
+
 /// Диагностика обработки, сохраняемая вместе с транскриптом.
 public struct TranscriptDiagnostics: Hashable, Codable, Sendable {
   public var dropped: [DroppedSegment]
   public var regions: [LanguageRegion]
   /// Сегменты, у которых по диаризации нет речи. Только пометка: SPEC.md §3.3 запрещает терять реплики.
   public var noSpeechEvidence: [Segment]
+  /// Пустые окна, пересчитанные вторым проходом; nil — проход не выполнялся (старые транскрипты).
+  public var recovered: [RecoveredWindow]?
 
   public init(
-    dropped: [DroppedSegment] = [], regions: [LanguageRegion] = [], noSpeechEvidence: [Segment] = []
+    dropped: [DroppedSegment] = [], regions: [LanguageRegion] = [],
+    noSpeechEvidence: [Segment] = [],
+    recovered: [RecoveredWindow]? = nil
   ) {
     self.dropped = dropped
     self.regions = regions
     self.noSpeechEvidence = noSpeechEvidence
+    self.recovered = recovered
   }
 
   public static let empty = TranscriptDiagnostics()

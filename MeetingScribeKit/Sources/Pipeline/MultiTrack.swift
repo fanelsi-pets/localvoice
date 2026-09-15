@@ -139,7 +139,8 @@ enum MultiTrack {
     speakerLanguages: [SpeakerLanguage],
     regions: [LanguageRegion],
     timings: [StageTiming],
-    createdAt: Date
+    createdAt: Date,
+    recovered: [RecoveredWindow] = []
   ) -> (transcript: Transcript, report: HallucinationFilter.Report) {
     var kept: [Segment] = []
     var dropped: [DroppedSegment] = []
@@ -205,7 +206,8 @@ enum MultiTrack {
           ($0.segment.start, $0.segment.end) < ($1.segment.start, $1.segment.end)
         },
         regions: regions,
-        noSpeechEvidence: noSpeechEvidence),
+        noSpeechEvidence: noSpeechEvidence,
+        recovered: recovered),
       speakerEmbeddings: tracks.compactMap { track in
         track.embedding.map {
           SpeakerEmbedding(

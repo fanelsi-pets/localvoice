@@ -13110,6 +13110,23 @@
         }
       }
     },
+    "пересчёт пропуска %lld/%lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "перерахунок пропуску %lld/%lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "re-decoding gap %lld/%lld"
+          }
+        }
+      }
+    },
     "по голосу": {
       "extractionState": "manual",
       "localizations": {

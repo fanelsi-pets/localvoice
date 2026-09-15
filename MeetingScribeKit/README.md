@@ -9,8 +9,9 @@ checksums, and the SwiftUI interface that Local Voice shows in its Meetings wind
 Author: Ivan Minin. The upstream package is developed privately; this copy is distributed with Local Voice
 under the same license as Local Voice (GNU GPL v3, see `../LICENSE`). Compared with upstream, the Sparkle
 updater target, the command-line tool and most test suites are not included — Local Voice does not use them.
-The WhisperKit adapter tests (`Tests/EngineTests`) are kept because they guard the clip boundaries handed to
-the WhisperKit chunker: `swift test --package-path MeetingScribeKit --filter EngineTests`.
+The WhisperKit adapter tests (`Tests/EngineTests`, clip boundaries handed to the WhisperKit chunker) and the
+pipeline tests (`Tests/PipelineTests`, the second pass over empty recognition windows) are kept:
+`swift test --package-path MeetingScribeKit`.
 
 Refresh the copy from a local checkout of the upstream repository with `scripts/sync-meetingscribe-kit.sh`
 and then re-run `scripts/merge-meetingscribe-strings.py` so the app's string catalog picks up new keys.

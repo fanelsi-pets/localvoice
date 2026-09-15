@@ -26278,6 +26278,23 @@
           }
         }
       }
+    },
+    "пересчёт пропуска %lld/%lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "re-decoding gap %lld/%lld"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "перерахунок пропуску %lld/%lld"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
