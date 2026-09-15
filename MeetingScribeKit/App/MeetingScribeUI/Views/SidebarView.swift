@@ -62,7 +62,7 @@ struct SidebarView: View {
       // «скачать». Второй путь — File → Импортировать… (⌘O) и перетаскивание файлов в окно.
       ToolbarItem {
         Button {
-          model.isFileImporterPresented = true
+          model.presentFileImporter()
         } label: {
           Label("Импорт…", systemImage: "square.and.arrow.down")
         }

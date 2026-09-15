@@ -23,7 +23,7 @@ struct EmptyStateView: View {
       .multilineTextAlignment(.center)
     } actions: {
       VStack(spacing: 12) {
-        Button("Открыть…") { model.isFileImporterPresented = true }
+        Button("Открыть…") { model.presentFileImporter() }
           .accessibilityIdentifier("import.button.empty")
         LocalProcessingBadge()
       }

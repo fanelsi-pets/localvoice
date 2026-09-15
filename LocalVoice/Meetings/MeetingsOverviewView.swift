@@ -79,7 +79,13 @@ struct MeetingsOverviewView: View {
 
     private func importRecording() {
         host.openWindow()
-        host.model.isFileImporterPresented = true
+        // The window may still be coming up: SwiftUI's fileImporter only presents on a window that is on
+        // screen, and a flag raised too early stays raised and blocks later "Open…" presses. Give the window
+        // a moment, then present through the model, which also resets a stuck flag.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            host.model.presentFileImporter()
+        }
     }
 }
 

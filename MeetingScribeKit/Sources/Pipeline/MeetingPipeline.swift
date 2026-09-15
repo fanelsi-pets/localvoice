@@ -446,7 +446,9 @@ public actor MeetingPipeline {
           in: pcm, speakerID: speakerID, options: configuration.speechActivity)
         run.tracks[index].turns = turns
         run.tracks[index].clips = SpeechActivityDetector.clipRanges(
-          from: turns, duration: pcm.duration)
+          from: turns, duration: pcm.duration,
+          mergeGap: configuration.speechActivity.clipMergeGapSeconds,
+          minimumSeconds: configuration.speechActivity.clipMinimumSeconds)
         let pulse = Self.trackPulse(run.tracks[index], index: index, count: count)
         reporter.report(
           .fraction(.diarization, Double(index) / Double(count), pulse: pulse))

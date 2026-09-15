@@ -111,13 +111,20 @@ public struct RecoveredWindow: Hashable, Codable, Sendable {
   public var attempts: Int
   /// Сколько сегментов найдено; 0 — окно так и осталось пустым.
   public var segments: Int
+  /// Почему окно пересчитывалось: `empty` — сегмент без токенов, `uncovered` — речь по диаризации без текста;
+  /// nil — транскрипт версии 4.1.2, где различия ещё не было.
+  public var reason: String?
 
-  public init(start: Double, end: Double, language: Language?, attempts: Int, segments: Int) {
+  public init(
+    start: Double, end: Double, language: Language?, attempts: Int, segments: Int,
+    reason: String? = nil
+  ) {
     self.start = start
     self.end = end
     self.language = language
     self.attempts = attempts
     self.segments = segments
+    self.reason = reason
   }
 }
 

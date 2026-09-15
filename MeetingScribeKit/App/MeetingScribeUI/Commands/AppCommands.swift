@@ -18,7 +18,7 @@ struct AppCommands: Commands {
     CommandGroup(replacing: .newItem) {
       Button("Новый проект") { model.beginCreatingProject() }
         .keyboardShortcut("n", modifiers: .command)
-      Button("Импортировать…") { model.isFileImporterPresented = true }
+      Button("Импортировать…") { model.presentFileImporter() }
         .keyboardShortcut("o", modifiers: .command)
     }
 

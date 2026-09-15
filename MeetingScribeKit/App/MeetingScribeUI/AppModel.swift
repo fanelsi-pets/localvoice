@@ -283,6 +283,21 @@ public final class AppModel {
 
   public var pendingImport: ImportRequest?
   public var isFileImporterPresented = false
+
+  /// Показ панели импорта. `fileImporter` реагирует только на переход false → true: если флаг уже взведён
+  /// (панель не успела показаться — окно в тот момент ещё создавалось), его нужно сбросить и взвести заново
+  /// на следующем проходе цикла, иначе кнопка «Открыть…» перестаёт работать до перезапуска.
+  public func presentFileImporter() {
+    guard isFileImporterPresented else {
+      isFileImporterPresented = true
+      return
+    }
+    isFileImporterPresented = false
+    Task { @MainActor [weak self] in
+      await Task.yield()
+      self?.isFileImporterPresented = true
+    }
+  }
   public var exportRequest: ExportRequest?
   public var alert: AppAlert?
   public var presentedHelp: HelpTopic?

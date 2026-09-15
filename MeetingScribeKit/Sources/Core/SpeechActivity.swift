@@ -29,6 +29,12 @@ public enum SpeechActivityDetector {
     public var mergeGapSeconds: Double
     /// Запас по краям отрезка, с (не выходит за границы аудио и не создаёт перекрытий соседних отрезков).
     public var paddingSeconds: Double
+    /// Клипы для распознавания (`clipRanges`): паузы между отрезками речи короче этого (с) сливаются.
+    /// 2,5 с вместо 1 с: на шумной дорожке детектор режет речь на обрывки по 1–2 с, а WhisperKit на обрывке без
+    /// контекста часто не отдаёт ни слова (проверено 2026-09-15: 376 клипов на 74 мин, половина короче 2 с).
+    public var clipMergeGapSeconds: Double
+    /// Минимальная длина клипа для распознавания, с: короткий клип растягивается на соседнюю тишину.
+    public var clipMinimumSeconds: Double
 
     public init(
       frameSeconds: Double = 0.02,
@@ -37,7 +43,9 @@ public enum SpeechActivityDetector {
       hangoverSeconds: Double = 0.3,
       minimumSpeechSeconds: Double = 0.3,
       mergeGapSeconds: Double = 0.3,
-      paddingSeconds: Double = 0.15
+      paddingSeconds: Double = 0.15,
+      clipMergeGapSeconds: Double = 2.5,
+      clipMinimumSeconds: Double = 4
     ) {
       self.frameSeconds = frameSeconds
       self.thresholdAboveFloorDB = thresholdAboveFloorDB
@@ -46,6 +54,8 @@ public enum SpeechActivityDetector {
       self.minimumSpeechSeconds = minimumSpeechSeconds
       self.mergeGapSeconds = mergeGapSeconds
       self.paddingSeconds = paddingSeconds
+      self.clipMergeGapSeconds = clipMergeGapSeconds
+      self.clipMinimumSeconds = clipMinimumSeconds
     }
   }
 

@@ -71,7 +71,7 @@ struct EmptyWindowRecoveryTests {
     ])
     let result = try await EmptyWindowRecovery.recover(
       segments: [segment(0, 10, "до"), empty, segment(20, 30, "после")],
-      audio: audio, turns: [Turn(start: 11, end: 18, speakerID: 1)],
+      audio: audio, turns: [Turn(start: 11.5, end: 15.5, speakerID: 1)],
       languageAt: { _ in .uk }, wordTimestamps: true, engine: engine)
 
     let calls = await engine.calls
@@ -119,7 +119,8 @@ struct EmptyWindowRecoveryTests {
     #expect(calls.map(\.language) == [.ru, nil])
     #expect(
       result.recovered == [
-        RecoveredWindow(start: 10, end: 20, language: nil, attempts: 2, segments: 0)
+        RecoveredWindow(
+          start: 10, end: 20, language: nil, attempts: 2, segments: 0, reason: "empty")
       ])
     #expect(result.segments == [empty])
   }
@@ -164,5 +165,155 @@ struct EmptyWindowRecoveryTests {
     #expect(trimmed.map(\.text) == ["внутри"])
     #expect(trimmed.first?.start == 11)
     #expect(trimmed.first?.end == 20)
+  }
+}
+
+// MARK: - Стадия 2: речь без текста
+
+private func segmentWithMetrics(
+  _ start: Double, _ end: Double, _ text: String, words: [Word], logprob: Double, ratio: Double
+) -> Segment {
+  Segment(
+    start: start, end: end, text: text, language: .ru, words: words, avgLogprob: logprob,
+    compressionRatio: ratio)
+}
+
+@Suite("Второй проход: реплики диаризации без текста")
+struct UncoveredSpeechRecoveryTests {
+  @Test("Реплика без текста пересчитывается, уже распознанные слова из результата не дублируются")
+  func uncoveredTurnIsRedecoded() async throws {
+    // Есть текст на 0–10 и 20–30, реплика спикера 2 на 11–19 без текста.
+    let existing = [
+      segment(0, 10, "до", words: [word(0, 10, " до")]),
+      segment(20, 30, "после", words: [word(20, 30, " после")]),
+    ]
+    let engine = ScriptedAsr(responses: [
+      [
+        segment(
+          9.5, 20.5, "до найдено после",
+          words: [
+            word(9.5, 10.2, " до"),  // середина 9.85 внутри уже распознанного 0–10 → дубликат
+            word(12, 14, " найдено"), word(20.2, 20.5, " после"),  // 20.35 — внутри 20–30 → дубликат
+          ])
+      ]
+    ])
+    let result = try await EmptyWindowRecovery.recover(
+      segments: existing, audio: audio,
+      turns: [
+        Turn(start: 0, end: 10, speakerID: 1), Turn(start: 11, end: 19, speakerID: 2),
+        Turn(start: 20, end: 30, speakerID: 1),
+      ],
+      languageAt: { _ in .ru }, wordTimestamps: true, engine: engine)
+    let calls = await engine.calls
+    #expect(calls.count == 1)
+    #expect(calls.first.map { abs($0.timeOffset - 10) < 1e-9 } == true)
+    #expect(result.segments.map(\.text) == ["до", "найдено", "после"])
+    #expect(result.recovered.count == 1)
+    #expect(result.recovered.first?.reason == EmptyWindowRecovery.reasonUncovered)
+    #expect(result.recovered.first?.segments == 1)
+  }
+
+  @Test("Покрытая реплика и короткая реплика не пересчитываются")
+  func coveredAndShortTurnsAreSkipped() async throws {
+    let engine = ScriptedAsr(responses: [[segment(0, 1, "лишнее")]])
+    let existing = [segment(0, 10, "текст", words: [word(1, 9, " текст")])]
+    let result = try await EmptyWindowRecovery.recover(
+      segments: existing, audio: audio,
+      turns: [Turn(start: 0, end: 10, speakerID: 1), Turn(start: 12, end: 13.5, speakerID: 2)],
+      languageAt: { _ in .ru }, wordTimestamps: true, engine: engine)
+    #expect(await engine.calls.isEmpty)
+    #expect(result.recovered.isEmpty)
+    #expect(result.segments == existing)
+  }
+
+  @Test("Соседние реплики одного спикера сливаются в одно окно, чужая реплика — отдельно")
+  func adjacentTurnsMerge() async throws {
+    let engine = ScriptedAsr(responses: [
+      [segment(11, 24, "одно окно", words: [word(11, 24, " одно окно")])],
+      [segment(31, 35, "другое", words: [word(31, 35, " другое")])],
+    ])
+    let result = try await EmptyWindowRecovery.recover(
+      segments: [], audio: audio,
+      turns: [
+        Turn(start: 10, end: 17, speakerID: 1), Turn(start: 18, end: 25, speakerID: 1),
+        Turn(start: 30, end: 36, speakerID: 2),
+      ],
+      languageAt: { _ in .uk }, wordTimestamps: true, engine: engine)
+    let calls = await engine.calls
+    #expect(calls.count == 2)
+    #expect(calls.map { $0.timeOffset } == [9, 29])
+    #expect(
+      result.recovered.map { ($0.start, $0.end) }.map { "\($0.0)-\($0.1)" } == [
+        "10.0-25.0", "30.0-36.0",
+      ])
+    #expect(result.segments.map(\.text) == ["одно окно", "другое"])
+  }
+
+  @Test("Галлюцинация на шуме отбрасывается: низкая вероятность или зацикленный текст")
+  func hallucinationGuard() async throws {
+    let engine = ScriptedAsr(responses: [
+      [
+        segmentWithMetrics(
+          11, 18, "шум шум шум", words: [word(11, 18, " шум шум шум")], logprob: -1.8, ratio: 1.0)
+      ],
+      [
+        segmentWithMetrics(
+          11, 18, "ла ла ла ла", words: [word(11, 18, " ла ла ла ла")], logprob: -0.3, ratio: 3.1)
+      ],
+    ])
+    let result = try await EmptyWindowRecovery.recover(
+      segments: [], audio: audio, turns: [Turn(start: 10, end: 19, speakerID: 1)],
+      languageAt: { _ in .ru }, wordTimestamps: true, engine: engine)
+    #expect(await engine.calls.count == 2)
+    #expect(result.segments.isEmpty)
+    #expect(
+      result.recovered == [
+        RecoveredWindow(
+          start: 10, end: 19, language: nil, attempts: 2, segments: 0, reason: "uncovered")
+      ])
+  }
+
+  @Test(
+    "Пустые окна и пропуски речи считаются в одном лимите; стадия 2 учитывает найденное стадией 1")
+  func stagesShareTheLimit() async throws {
+    let engine = ScriptedAsr(responses: [
+      [segment(10.5, 19.5, "найдено", words: [word(10.5, 19.5, " найдено")])]
+    ])
+    let result = try await EmptyWindowRecovery.recover(
+      segments: [segment(10, 20, "")], audio: audio,
+      turns: [Turn(start: 10, end: 20, speakerID: 1)],
+      languageAt: { _ in .ru }, wordTimestamps: true, engine: engine)
+    // Пустое окно восстановлено стадией 1; та же реплика уже покрыта — стадия 2 её не трогает.
+    #expect(await engine.calls.count == 1)
+    #expect(result.recovered.map(\.reason) == [EmptyWindowRecovery.reasonEmpty])
+    #expect(result.segments.map(\.text) == ["найдено"])
+  }
+}
+
+@Suite("Клипы дорожек для распознавания")
+struct TrackClipTests {
+  @Test(
+    "Паузы до 2,5 с сливаются, короткий клип растягивается до 4 с, далёкие отрезки остаются отдельными"
+  )
+  func clipsMergeAndExpand() {
+    let options = SpeechActivityDetector.Options()
+    #expect(options.clipMergeGapSeconds == 2.5)
+    #expect(options.clipMinimumSeconds == 4)
+    let turns = [
+      Turn(start: 10, end: 11, speakerID: 1), Turn(start: 13, end: 14, speakerID: 1),  // пауза 2 с → один клип
+      Turn(start: 40, end: 40.8, speakerID: 1),  // короткий → растянется до 4 с
+      Turn(start: 60, end: 70, speakerID: 1),
+    ]
+    let clips = SpeechActivityDetector.clipRanges(
+      from: turns, duration: 100, mergeGap: options.clipMergeGapSeconds,
+      minimumSeconds: options.clipMinimumSeconds)
+    #expect(clips.count == 3)
+    #expect(clips[0].lowerBound <= 10 && clips[0].upperBound >= 14)
+    #expect(clips[1].upperBound - clips[1].lowerBound >= 4 - 1e-9)
+    #expect(clips[2] == 60...70)
+    // Старые умолчания дали бы 1-секундные клипы: два отрезка не сливаются при gap 1.
+    let legacy = SpeechActivityDetector.clipRanges(
+      from: turns, duration: 100, mergeGap: 1.0, minimumSeconds: 1.2)
+    #expect(legacy.count == 4)
   }
 }
