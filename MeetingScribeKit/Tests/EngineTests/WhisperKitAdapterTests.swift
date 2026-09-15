@@ -166,6 +166,7 @@ struct WhisperKitMappingTests {
     #expect(options.withoutTimestamps == false)
     #expect(options.wordTimestamps)
     #expect(options.chunkingStrategy == .vad)
+    #expect(options.concurrentWorkerCount == 4)
     #expect(options.noSpeechThreshold == 0.6)
     #expect(options.compressionRatioThreshold == 2.4)
   }

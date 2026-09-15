@@ -170,6 +170,13 @@ enum WhisperKitMapping {
   ///
   /// `clipTimestamps` — уже приведённые к буферу пары секунд из `clipTimestamps(_:sampleCount:)`;
   /// пустой список означает «весь файл».
+  /// Параллельные декодеры чанков. Умолчание WhisperKit на macOS — 16, но неудачный чанк WhisperKit молча
+  /// выбрасывает (`VADAudioChunker.updateSeekOffsetsForResults` берёт только `.success`), а при 16 одновременных
+  /// предсказаниях CoreML в приложении, где рядом живёт модель диктовки, часть чанков терялась: у встречи на
+  /// 106 мин приложение отдало 4 279 слов, тот же файл в отдельном процессе — 14 763 (2026-09-15). Четыре
+  /// воркера — умолчание самого argmax-cli; ANE всё равно выполняет предсказания по очереди.
+  static let concurrentWorkers = 4
+
   static func decodingOptions(
     language: Language, wordTimestamps: Bool, clipTimestamps: [Float] = []
   ) -> DecodingOptions {
@@ -182,6 +189,7 @@ enum WhisperKitMapping {
       withoutTimestamps: false,
       wordTimestamps: wordTimestamps,
       clipTimestamps: clipTimestamps,
+      concurrentWorkerCount: concurrentWorkers,
       chunkingStrategy: .vad
     )
   }

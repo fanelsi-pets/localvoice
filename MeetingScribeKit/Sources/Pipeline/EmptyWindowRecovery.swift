@@ -22,7 +22,8 @@ public enum EmptyWindowRecovery {
     public var minimumSpeechSeconds: Double
     /// Запас по краям окна при повторном вызове (с).
     public var paddingSeconds: Double
-    /// Предел числа окон за прогон (обе стадии) — защита от вырожденного прогона, где пусто всё.
+    /// Предел числа окон за прогон (обе стадии): защита от вырожденного прогона; 400 покрывает встречу на два часа,
+    /// где WhisperKit потерял до трети чанков (2026-09-15).
     public var maximumWindows: Int
     /// Реплика диаризации не короче этого (с) считается кандидатом на пропуск речи.
     public var uncoveredMinimumSeconds: Double
@@ -37,7 +38,7 @@ public enum EmptyWindowRecovery {
 
     public init(
       minimumSeconds: Double = 2, minimumSpeechSeconds: Double = 1, paddingSeconds: Double = 1,
-      maximumWindows: Int = 200, uncoveredMinimumSeconds: Double = 2,
+      maximumWindows: Int = 400, uncoveredMinimumSeconds: Double = 2,
       uncoveredCoverage: Double = 0.3,
       uncoveredMergeGapSeconds: Double = 1.5, minimumAverageLogprob: Double = -1.2,
       maximumCompressionRatio: Double = 2.4
