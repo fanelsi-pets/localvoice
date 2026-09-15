@@ -11,7 +11,10 @@ struct ReasoningConfig {
     // These Gemini models only go down to "minimal".
     static let geminiMinimalReasoningModels: Set<String> = [
         "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
+        "gemini-3.6-flash",
+        "gemini-3.8-flash",
     ]
 
     // OpenAI GPT-5 models support explicit "none"; GPT-4.1 models need no param.

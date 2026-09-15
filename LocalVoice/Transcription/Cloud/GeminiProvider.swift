@@ -20,6 +20,16 @@ struct GeminiProvider: CloudProvider {
                 isMultilingual: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
             ),
+            CloudModel(
+                name: "gemini-3.5-transcribe",
+                displayName: "Gemini 3.5 Transcribe",
+                description: String(localized: "Google's dedicated speech-to-text model (new); try it if Flash-Lite hits its limits"),
+                provider: .gemini,
+                speed: 0.95,
+                accuracy: 0.94,
+                isMultilingual: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
+            ),
         ]
     }
 

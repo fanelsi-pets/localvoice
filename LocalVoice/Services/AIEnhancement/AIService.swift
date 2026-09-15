@@ -63,7 +63,9 @@ enum AIProvider: String, CaseIterable {
         case .groq:
             return "openai/gpt-oss-120b"
         case .gemini:
-            return "gemini-3.5-flash"
+            // 3.5 Flash-Lite: 15 requests per minute on the free tier (AI Studio rate-limit dashboard,
+            // 2026-09-15), enough for dictation enhancement; gemini-3.5-flash kept hitting its limits.
+            return "gemini-3.5-flash-lite"
         case .anthropic:
             return "claude-sonnet-5"
         case .openAI:
@@ -106,8 +108,11 @@ enum AIProvider: String, CaseIterable {
             ]
         case .gemini:
             return [
-                "gemini-3.5-flash",
+                "gemini-3.5-flash-lite",
                 "gemini-3.1-flash-lite",
+                "gemini-3.6-flash",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash",
             ]
         case .anthropic:
             return [

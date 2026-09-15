@@ -131,6 +131,7 @@ struct LocalVoiceApp: App {
         StreamingKeysMigration.run()
         GeminiModelMigration.run()
         GeminiFlash35Migration.run()
+        GeminiFlashLiteEnhancementMigration.run()
         whisperModelManager.createModelsDirectoryIfNeeded()
         whisperModelManager.loadAvailableModels()
         transcriptionModelManager.refreshAllAvailableModels()
