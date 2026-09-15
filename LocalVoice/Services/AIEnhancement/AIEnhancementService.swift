@@ -318,8 +318,9 @@ class AIEnhancementService: ObservableObject {
         case .missingAPIKey:
             return .notConfigured
         case .httpError(let statusCode, let message):
-            if statusCode == 429 { return .rateLimitExceeded }
-            if (500...599).contains(statusCode) { return .serverError }
+            let detail = EnhancementRetryPolicy.providerDetail(from: message)
+            if statusCode == 429 { return .rateLimitExceeded(detail: detail) }
+            if (500...599).contains(statusCode) { return .serverError(detail: detail) }
             return .customError("HTTP \(statusCode): \(message)")
         case .noResultReturned:
             return .enhancementFailed
@@ -340,13 +341,15 @@ class AIEnhancementService: ObservableObject {
         text: String,
         configuration: EnhancementRuntimeConfiguration,
         contextSnapshot: RecordingContextSnapshot?,
-        maxRetries: Int = 3,
-        initialDelay: TimeInterval = 1.0
+        retryDelays: [TimeInterval] = EnhancementRetryPolicy.defaultDelays
     ) async throws -> String {
+        // One request plus one retry per scheduled delay. LLMKit already retries 429/5xx three times within
+        // a few seconds; this outer schedule covers provider overloads that last longer (Gemini "model is
+        // overloaded", quota windows) and honours the delay the provider suggests for rate limits.
+        let maxRetries = retryDelays.count
         var retries = 0
-        var currentDelay = initialDelay
 
-        while retries < maxRetries {
+        while true {
             do {
                 return try await makeRequest(
                     text: text,
@@ -356,28 +359,33 @@ class AIEnhancementService: ObservableObject {
             } catch let error as EnhancementError {
                 switch error {
                 case .networkError, .serverError, .rateLimitExceeded:
-                    retries += 1
-                    if retries < maxRetries {
-                        logger.warning(
-                            "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                    guard retries < maxRetries else {
+                        logger.error(
+                            "Request failed after \(maxRetries, privacy: .public) retries: \(error.errorDescription ?? "", privacy: .public)"
                         )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
-                        logger.error("Request failed after \(maxRetries, privacy: .public) retries.")
                         throw error
                     }
+                    var delay = retryDelays[retries]
+                    if case .rateLimitExceeded(let detail) = error,
+                        let suggested = EnhancementRetryPolicy.suggestedRetryDelay(in: detail)
+                    {
+                        delay = EnhancementRetryPolicy.clampedDelay(max(delay, suggested))
+                    }
+                    retries += 1
+                    logger.warning(
+                        "Request failed (\(error.errorDescription ?? "", privacy: .public)), retrying in \(delay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                    )
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 case .timeout:
                     if retryOnTimeout {
-                        retries += 1
-                        if retries < maxRetries {
-                            logger.warning(
-                                "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
-                            )
-                        } else {
+                        guard retries < maxRetries else {
                             logger.error("Request timed out after \(maxRetries, privacy: .public) retries.")
                             throw error
                         }
+                        retries += 1
+                        logger.warning(
+                            "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                        )
                     } else {
                         logger.error("Request timed out, failing immediately (retry disabled).")
                         throw error
@@ -391,24 +399,21 @@ class AIEnhancementService: ObservableObject {
                     && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(
                         nsError.code)
                 {
-                    retries += 1
-                    if retries < maxRetries {
-                        logger.warning(
-                            "Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
-                        )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
+                    guard retries < maxRetries else {
                         logger.error("Request failed after \(maxRetries, privacy: .public) retries with network error.")
                         throw EnhancementError.networkError
                     }
+                    let delay = retryDelays[retries]
+                    retries += 1
+                    logger.warning(
+                        "Request failed with network error, retrying in \(delay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                    )
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 } else {
                     throw error
                 }
             }
         }
-
-        throw EnhancementError.enhancementFailed
     }
 
     func enhance(
@@ -505,10 +510,70 @@ enum EnhancementError: Error {
     case invalidResponse
     case enhancementFailed
     case networkError
-    case serverError
-    case rateLimitExceeded
+    case serverError(detail: String?)
+    case rateLimitExceeded(detail: String?)
     case timeout
     case customError(String)
+}
+
+/// Retry schedule and provider-message helpers for enhancement requests (pure functions, unit-tested).
+enum EnhancementRetryPolicy {
+    /// Waits before retry 1, 2 and 3 (seconds); the provider-suggested delay for rate limits can raise them.
+    static let defaultDelays: [TimeInterval] = [1.5, 4, 8]
+    /// Upper bound for a provider-suggested wait: longer than this and the user is better off with the raw text.
+    static let maximumDelay: TimeInterval = 30
+
+    /// Human-readable detail from an HTTP error body: `error.message` (and `error.status`) of a JSON body
+    /// (OpenAI-compatible and Gemini shapes), otherwise the trimmed body itself, capped in length.
+    static func providerDetail(from body: String, limit: Int = 200) -> String? {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if let data = trimmed.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
+            let error = object["error"]
+            var message: String?
+            var status: String?
+            if let dictionary = error as? [String: Any] {
+                message = dictionary["message"] as? String
+                status = dictionary["status"] as? String ?? dictionary["type"] as? String
+            } else if let text = error as? String {
+                message = text
+            } else if let text = object["message"] as? String {
+                message = text
+            }
+            if let message, !message.isEmpty {
+                let combined = status.map { "\($0): \(message)" } ?? message
+                return String(combined.prefix(limit))
+            }
+        }
+        return String(trimmed.prefix(limit))
+    }
+
+    /// A wait the provider asked for, parsed from its message: "retry in 23.4s", "retryDelay": "23s",
+    /// "retry after 12 seconds". Nil when no such hint is present.
+    static func suggestedRetryDelay(in detail: String?) -> TimeInterval? {
+        guard let detail else { return nil }
+        let patterns = [
+            #"retry ?(?:in|after)[^0-9]{0,12}([0-9]+(?:\.[0-9]+)?)\s*(?:s\b|sec|seconds?)"#,
+            #"retryDelay\W{0,4}([0-9]+(?:\.[0-9]+)?)s"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            let range = NSRange(detail.startIndex..., in: detail)
+            if let match = regex.firstMatch(in: detail, options: [], range: range), match.numberOfRanges > 1,
+                let valueRange = Range(match.range(at: 1), in: detail),
+                let value = TimeInterval(detail[valueRange]), value > 0
+            {
+                return value
+            }
+        }
+        return nil
+    }
+
+    static func clampedDelay(_ delay: TimeInterval) -> TimeInterval {
+        min(max(delay, 0), maximumDelay)
+    }
 }
 
 extension EnhancementError: LocalizedError {
@@ -522,15 +587,23 @@ extension EnhancementError: LocalizedError {
             return String(localized: "AI enhancement failed to process the text.")
         case .networkError:
             return String(localized: "Network connection failed. Check your internet.")
-        case .serverError:
-            return String(localized: "The AI provider's server encountered an error. Please try again later.")
-        case .rateLimitExceeded:
-            return String(localized: "Rate limit exceeded. Please try again later.")
+        case .serverError(let detail):
+            return Self.withDetail(
+                String(localized: "The AI provider's server encountered an error. Please try again later."), detail)
+        case .rateLimitExceeded(let detail):
+            return Self.withDetail(String(localized: "Rate limit exceeded. Please try again later."), detail)
         case .timeout:
             return String(
                 localized: "Enhancement request timed out. Check your connection or increase the timeout duration.")
         case .customError(let message):
             return message
         }
+    }
+
+    /// "Base message (provider detail)" — the provider's own words tell the user whether it is an overload,
+    /// a quota or a bug, instead of a generic sentence.
+    private static func withDetail(_ base: String, _ detail: String?) -> String {
+        guard let detail, !detail.isEmpty else { return base }
+        return "\(base) (\(detail))"
     }
 }
