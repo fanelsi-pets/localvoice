@@ -1,12 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Google's dedicated speech-to-text model (new); try it if Flash-Lite hits its limits" : {
+    "Google's dedicated speech-to-text model: detects the language per utterance, handles mixed languages, uses your dictionary" : {
       "localizations" : {
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Спеціалізована модель Google для перетворення мовлення в текст (нова); спробуйте, якщо Flash-Lite впирається в ліміти"
+            "value" : "Спеціалізована модель Google для перетворення мовлення в текст: визначає мову кожної фрази, розуміє змішані мови, використовує ваш словник"
           }
         }
       }

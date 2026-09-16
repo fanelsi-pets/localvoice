@@ -229,14 +229,19 @@ class TranscriptionPipeline {
         } catch {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 
-            if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
-                nativeAppleError.shouldShowNotification
-            {
+            // Cloud failures used to end up only in the history item: nothing was pasted and nothing was shown.
+            let showsNotification: Bool
+            if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError {
+                showsNotification = nativeAppleError.shouldShowNotification
+            } else {
+                showsNotification = error is CloudTranscriptionError
+            }
+            if showsNotification {
                 await MainActor.run {
                     NotificationManager.shared.showNotification(
-                        title: errorDescription,
+                        title: String(format: String(localized: "Transcription Failed: %@"), errorDescription),
                         type: .error,
-                        duration: 5.0
+                        duration: 6.0
                     )
                 }
             }

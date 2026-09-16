@@ -23,7 +23,7 @@ struct GeminiProvider: CloudProvider {
             CloudModel(
                 name: "gemini-3.5-transcribe",
                 displayName: "Gemini 3.5 Transcribe",
-                description: String(localized: "Google's dedicated speech-to-text model (new); try it if Flash-Lite hits its limits"),
+                description: String(localized: "Google's dedicated speech-to-text model: detects the language per utterance, handles mixed languages, uses your dictionary"),
                 provider: .gemini,
                 speed: 0.95,
                 accuracy: 0.94,
@@ -36,6 +36,12 @@ struct GeminiProvider: CloudProvider {
     func transcribe(
         audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
     ) async throws -> String {
+        if GeminiTranscribeClient.isTranscribeModel(model) {
+            // Gemini 3.5 Transcribe answers only through the Interactions API (Files API upload + interaction).
+            return try await GeminiTranscribeClient.transcribe(
+                audioData: audioData, fileName: fileName, apiKey: apiKey, model: model,
+                language: language, customVocabulary: customVocabulary)
+        }
         return try await GeminiTranscriptionClient.transcribe(
             audioData: audioData,
             apiKey: apiKey,
