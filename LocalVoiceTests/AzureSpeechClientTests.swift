@@ -22,7 +22,9 @@ struct AzureSpeechClientTests {
         let enhanced = try #require(definition["enhancedMode"] as? [String: Any])
         #expect(enhanced["model"] as? String == "MAI-Transcribe-2")
         #expect(enhanced["enabled"] as? Bool == true)
-        let options = try #require(definition["modelOptions"] as? [String: String])
+        // Внутри enhancedMode: на верхнем уровне API их игнорирует и не отдаёт слова.
+        #expect(definition["modelOptions"] == nil)
+        let options = try #require(enhanced["modelOptions"] as? [String: String])
         #expect(options["transcribeStyle"] == "verbatim")
         #expect(options["timestamps"] == "word")
         #expect((definition["diarization"] as? [String: Bool])?["enabled"] == false)
@@ -31,7 +33,7 @@ struct AzureSpeechClientTests {
 
         let plain = AzureSpeechClient.definition(style: .clean, timestamps: .none, phrases: [" "], locales: [])
         #expect(plain["phraseList"] == nil)
-        #expect((plain["modelOptions"] as? [String: String])?["timestamps"] == "none")
+        #expect(((plain["enhancedMode"] as? [String: Any])?["modelOptions"] as? [String: String])?["timestamps"] == "none")
         #expect(JSONSerialization.isValidJSONObject(plain))
     }
 

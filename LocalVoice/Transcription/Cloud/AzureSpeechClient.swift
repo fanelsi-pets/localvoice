@@ -54,15 +54,20 @@ enum AzureSpeechClient {
         )!
     }
 
-    /// Поле `definition` запроса. Диаризацию не просим: в preview она падает на записях от ~15 минут,
-    /// а спикеров у встреч даёт локальный диаризатор. Словарь — до 1000 фраз (лимит API).
+    /// Поле `definition` запроса: `modelOptions` (стиль, таймкоды) лежат внутри `enhancedMode` — на верхнем
+    /// уровне API их молча игнорирует и отдаёт одну фразу без слов (проверено 2026-09-17). Диаризацию не
+    /// просим: в preview она падает на записях от ~15 минут, а спикеров у встреч даёт локальный диаризатор.
+    /// Словарь — до 1000 фраз (лимит API).
     static func definition(
         style: Style, timestamps: Timestamps, phrases: [String], locales: [String], diarization: Bool = false
     ) -> [String: Any] {
         var definition: [String: Any] = [
-            "enhancedMode": ["enabled": true, "model": modelName],
+            "enhancedMode": [
+                "enabled": true,
+                "model": modelName,
+                "modelOptions": ["transcribeStyle": style.rawValue, "timestamps": timestamps.rawValue],
+            ],
             "diarization": ["enabled": diarization],
-            "modelOptions": ["transcribeStyle": style.rawValue, "timestamps": timestamps.rawValue],
             "locales": locales,
         ]
         let terms = phrases.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
