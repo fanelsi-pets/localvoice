@@ -31,7 +31,7 @@ extension CloudProvider {
 
 enum CloudProviderRegistry {
     // Remote providers are opt-in and only become usable after their key is saved.
-    static let allProviders: [any CloudProvider] = [GeminiProvider(), OpenAIProvider()]
+    static let allProviders: [any CloudProvider] = [GeminiProvider(), OpenAIProvider(), AzureSpeechProvider()]
 
     static func provider(for modelProvider: ModelProvider) -> (any CloudProvider)? {
         allProviders.first { $0.modelProvider == modelProvider }

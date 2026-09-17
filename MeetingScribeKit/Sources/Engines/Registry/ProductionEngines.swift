@@ -13,19 +13,20 @@ public actor ProductionEngines: EngineProviding {
   }
 
   private let modelStore: ModelStore
-  /// Облачный провайдер хоста (LocalVoice — Gemini 3.5 Transcribe); `nil` — режим `.gemini` недоступен.
-  private let remote: (any RemoteTranscribing)?
+  /// Облачные провайдеры хоста по движку (LocalVoice — Gemini 3.5 Transcribe, Azure MAI-Transcribe-2);
+  /// облачный движок без своего провайдера недоступен.
+  private let remotes: [AsrEngineID: any RemoteTranscribing]
   private let verbose: Bool
   private var asrCache: [AsrKey: any AsrEngine] = [:]
   private var diarizerCache: [DiarizerID: any Diarizer] = [:]
 
   public init(
     modelStore: ModelStore = .standard(),
-    remote: (any RemoteTranscribing)? = nil,
+    remotes: [AsrEngineID: any RemoteTranscribing] = [:],
     verbose: Bool = false
   ) {
     self.modelStore = modelStore
-    self.remote = remote
+    self.remotes = remotes
     self.verbose = verbose
   }
 
@@ -38,7 +39,7 @@ public actor ProductionEngines: EngineProviding {
     if let cached = asrCache[key] { return cached }
     asrCache.removeAll()
     let engine = try EngineFactory.makeAsr(
-      selection.asr, model: selection.whisperModel, modelStore: modelStore, remote: remote,
+      selection.asr, model: selection.whisperModel, modelStore: modelStore, remotes: remotes,
       verbose: verbose)
     asrCache[key] = engine
     return engine

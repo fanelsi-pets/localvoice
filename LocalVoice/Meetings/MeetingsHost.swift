@@ -34,8 +34,11 @@ final class MeetingsHost {
             libraryDirectory: dataDirectory,
             modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true),
             defaultEngines: Self.defaultEngines,
-            // Облачный режим «Gemini 3.5 Transcribe» в диалоге импорта: ключ и сеть — на стороне хоста.
-            remoteTranscriber: GeminiMeetingTranscriber()
+            // Облачные режимы в диалоге импорта: ключи и сеть — на стороне хоста (ADR-010).
+            remoteTranscribers: [
+                .gemini: GeminiMeetingTranscriber(),
+                .azure: AzureMeetingTranscriber(),
+            ]
         )
         model.windowTitle = String(localized: "Meetings")
         // One-time: builds before this default stored turbo through onboarding; move WhisperKit users to

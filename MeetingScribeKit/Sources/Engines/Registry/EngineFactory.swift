@@ -12,12 +12,13 @@ public enum EngineFactory {
   public static let defaultDiarizer: DiarizerID = .speakerkit
   public static let defaultWhisperModel: ModelID = .whisperLargeV3Turbo
 
-  /// `remote` — облачный провайдер приложения-хоста (ADR-010); без него режим `.gemini` недоступен.
+  /// `remotes` — облачные провайдеры приложения-хоста по движку (ADR-010); облачный режим без своего
+  /// провайдера недоступен.
   public static func makeAsr(
     _ id: AsrEngineID,
     model: ModelID? = nil,
     modelStore: ModelStore,
-    remote: (any RemoteTranscribing)? = nil,
+    remotes: [AsrEngineID: any RemoteTranscribing] = [:],
     verbose: Bool = false
   ) throws -> any AsrEngine {
     switch id {
@@ -26,8 +27,8 @@ public enum EngineFactory {
         modelStore: modelStore, model: model ?? defaultWhisperModel, verbose: verbose)
     case .parakeet:
       return ParakeetEngine(modelStore: modelStore)
-    case .gemini:
-      guard let remote else {
+    case .gemini, .azure:
+      guard let remote = remotes[id] else {
         throw EngineError.modelUnavailable(
           String(
             localized: "облачное распознавание доступно только в приложении с ключом провайдера"))
@@ -59,7 +60,7 @@ public enum EngineFactory {
       models.append(contentsOf: [whisperModel ?? defaultWhisperModel, .whisperTokenizer])
     case .parakeet: models.append(.parakeetTDTv3)
     // Облако: локальных моделей распознавания нет, качать нечего.
-    case .gemini: break
+    case .gemini, .azure: break
     }
     switch diarizer {
     case .speakerkit?: models.append(.speakerKitPyannote)

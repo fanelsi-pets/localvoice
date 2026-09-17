@@ -85,18 +85,16 @@ struct ImportSheet: View {
           Picker("Режим", selection: modeBinding) {
             Text("Точный (WhisperKit)").tag(AsrEngineID.whisperkit)
             Text("Быстрый (Parakeet)").tag(AsrEngineID.parakeet)
-            // Облачный режим — только когда хост дал провайдера с ключом (ADR-010).
-            if model.remoteTranscriber != nil {
-              Text("Gemini 3.5 Transcribe (облако)").tag(AsrEngineID.gemini)
+            // Облачные режимы — только те, для которых хост дал провайдера с ключом (ADR-010).
+            ForEach(model.availableAsrEngines.filter(\.isCloud), id: \.self) { engine in
+              Text(engine.title).tag(engine)
             }
           }
           .accessibilityIdentifier("import.mode")
           if draft.engines.asr.isCloud {
-            Text(
-              "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(Self.cloudNote(for: draft.engines.asr))
+              .font(.caption)
+              .foregroundStyle(.secondary)
           } else {
             Text("Модель WhisperKit и диаризатор выбираются в настройках: \(draft.engines.title).")
               .font(.caption)
@@ -168,5 +166,24 @@ struct ImportSheet: View {
     var request = draft
     request.items = items
     model.confirmImport(request)
+  }
+}
+
+extension ImportSheet {
+  /// Куда уходит аудио в облачном режиме — подпись под выбором режима.
+  static func cloudNote(for engine: AsrEngineID) -> String {
+    switch engine {
+    case .gemini:
+      String(
+        localized:
+          "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей."
+      )
+    case .azure:
+      String(
+        localized:
+          "Аудио встречи уходит в Microsoft Azure по вашему ключу, в регион вашего ресурса Speech: распознаёт MAI-Transcribe-2, спикеров по-прежнему размечает локальный диаризатор. По условиям Azure отправленное аудио не сохраняется."
+      )
+    case .whisperkit, .parakeet: ""
+    }
   }
 }

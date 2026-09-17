@@ -6,18 +6,21 @@ public enum AsrEngineID: String, CaseIterable, Codable, Sendable, Hashable {
   case parakeet
   /// Облачный Gemini 3.5 Transcribe через провайдера хоста (`RemoteTranscribing`): аудио уходит в Google.
   case gemini
+  /// Облачный Microsoft MAI-Transcribe-2 (Azure Speech) через провайдера хоста: аудио уходит в Azure.
+  case azure
 
   public var title: String {
     switch self {
     case .whisperkit: "WhisperKit (Whisper large-v3)"
     case .parakeet: "Parakeet TDT v3 (FluidAudio)"
     case .gemini: "Gemini 3.5 Transcribe (облако)"
+    case .azure: "MAI-Transcribe-2 (Azure, облако)"
     }
   }
 
   /// Уходит ли аудио за пределы машины: для предупреждения в интерфейсе и для отключения приёмов,
   /// рассчитанных на локальный движок (второй проход по пустым окнам).
-  public var isCloud: Bool { self == .gemini }
+  public var isCloud: Bool { self == .gemini || self == .azure }
 }
 
 public enum DiarizerID: String, CaseIterable, Codable, Sendable, Hashable {
@@ -62,8 +65,10 @@ public struct EngineSelection: Hashable, Codable, Sendable {
     switch asr {
     case .parakeet: 0.006
     case .whisperkit: whisperModel == .whisperLargeV3 ? 0.12 : 0.05
-    // Облако: загрузка куска плюс распознавание на стороне Google — оценка для плана прогресса.
+    // Облако: загрузка куска плюс распознавание на стороне провайдера — оценка для плана прогресса
+    // (Azure обещает час звука за ~10 с, но кусок ещё надо выгрузить).
     case .gemini: 0.08
+    case .azure: 0.03
     }
   }
 
@@ -75,6 +80,7 @@ public struct EngineSelection: Hashable, Codable, Sendable {
         whisperModel == .whisperLargeV3 ? "WhisperKit large-v3" : "WhisperKit large-v3 turbo"
       case .parakeet: "Parakeet TDT v3"
       case .gemini: "Gemini 3.5 Transcribe"
+      case .azure: "MAI-Transcribe-2"
       }
     let diarizerTitle: String? =
       switch diarizer {

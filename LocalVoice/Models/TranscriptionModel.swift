@@ -15,6 +15,7 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case assemblyAI = "AssemblyAI"
     case xai = "xAI"
     case cartesia = "Cartesia"
+    case azureSpeech = "Azure Speech"
     case custom = "Custom"
     case nativeApple = "Native Apple"
 

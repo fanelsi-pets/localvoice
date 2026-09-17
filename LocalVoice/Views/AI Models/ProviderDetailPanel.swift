@@ -16,6 +16,7 @@ struct ProviderDetailPanel: View {
     @State private var verificationSucceeded = false
     @State private var isShowingRemoveAPIKeyConfirmation = false
     @State private var activeDescriptorID = ""
+    @State private var azureRegion = AzureSpeechSettings.region
 
     private var isConfigured: Bool {
         APIKeyManager.shared.hasAPIKey(forProvider: descriptor.providerKey)
@@ -94,6 +95,10 @@ struct ProviderDetailPanel: View {
                 }
 
                 verificationStatusMessage
+
+                if isAzureSpeech {
+                    azureRegionRow
+                }
             }
         }
     }
@@ -404,6 +409,29 @@ struct ProviderDetailPanel: View {
             )
     }
 
+    private var isAzureSpeech: Bool {
+        descriptor.providerKey.caseInsensitiveCompare(AzureSpeechProvider.keyName) == .orderedSame
+    }
+
+    /// Регион ресурса Speech: у MAI-Transcribe-2 их шесть, для Европы northeurope. Сохраняется при каждом
+    /// изменении; проверка ключа и запросы идут в этот регион.
+    private var azureRegionRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Region")
+                .font(.system(size: 13, weight: .semibold))
+            TextField(AzureSpeechSettings.defaultRegion, text: $azureRegion)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .onChange(of: azureRegion) { _, newValue in
+                    AzureSpeechSettings.region = newValue
+                }
+            Text("Azure region of your Speech resource, as shown next to its keys (for example northeurope).")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var obfuscatedKey: String? {
         guard let savedKey = APIKeyManager.shared.getAPIKey(forProvider: descriptor.providerKey) else {
             return nil
@@ -425,6 +453,7 @@ struct ProviderDetailPanel: View {
 
     private func resetProviderState() {
         activeDescriptorID = descriptor.id
+        azureRegion = AzureSpeechSettings.region
         verificationSucceeded = isConfigured
         apiKey = ""
         isVerifying = false

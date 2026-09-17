@@ -150,9 +150,7 @@ struct EngineSettings: View {
   @Bindable var settings: AppSettings
   @State private var statuses: [ModelStatus] = []
 
-  var availableEngines: [AsrEngineID] {
-    AsrEngineID.allCases.filter { !$0.isCloud || model.remoteTranscriber != nil }
-  }
+  var availableEngines: [AsrEngineID] { model.availableAsrEngines }
 
   var body: some View {
     Form {

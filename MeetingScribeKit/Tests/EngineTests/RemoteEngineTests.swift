@@ -1,5 +1,6 @@
 import AVFoundation
 import Core
+import Engines
 import Foundation
 import Testing
 
@@ -120,5 +121,41 @@ struct RemoteEngineTests {
     #expect(abs(Double(file.length) / file.fileFormat.sampleRate - 3) < 0.05)
     let size = try FileManager.default.attributesOfItem(atPath: written.url.path)[.size] as? Int
     #expect((size ?? 0) > 0)
+  }
+}
+
+private struct FakeRemote: RemoteTranscribing {
+  let title = "Fake"
+  let model = "fake"
+  let maximumClipSeconds: Double = 600
+  func availability() async -> RemoteTranscriberAvailability { .available }
+  func transcribe(clip url: URL, mimeType: String, duration: Double, language: Language?)
+    async throws
+    -> [RemoteWord]
+  { [] }
+}
+
+@Suite("Облачные движки по провайдерам хоста")
+struct CloudEngineWiringTests {
+  @Test("Облачный движок создаётся только с провайдером хоста для этого движка")
+  func cloudEnginesNeedTheirProvider() throws {
+    let store = ModelStore(
+      root: FileManager.default.temporaryDirectory.appendingPathComponent(
+        "cloud-wiring-\(UUID().uuidString)"))
+    let azure = try EngineFactory.makeAsr(
+      .azure, modelStore: store, remotes: [.azure: FakeRemote()])
+    #expect(azure is RemoteAsrEngine)
+    #expect(azure.descriptor.name == "Fake")
+    #expect(throws: (any Error).self) {
+      try EngineFactory.makeAsr(.gemini, modelStore: store, remotes: [.azure: FakeRemote()])
+    }
+  }
+
+  @Test("Облачные идентификаторы помечены как облако, локальные — нет, качать им нечего")
+  func cloudFlags() {
+    #expect(AsrEngineID.azure.isCloud && AsrEngineID.gemini.isCloud)
+    #expect(!AsrEngineID.whisperkit.isCloud && !AsrEngineID.parakeet.isCloud)
+    #expect(EngineFactory.requiredModels(asr: .azure, whisperModel: nil, diarizer: nil).isEmpty)
+    #expect(EngineSelection(asr: .azure, diarizer: .speakerkit).title.hasPrefix("MAI-Transcribe-2"))
   }
 }

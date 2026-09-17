@@ -154,6 +154,11 @@ struct ProviderDescriptor: Identifiable {
             return URL(string: "https://console.x.ai/")
         case "cartesia":
             return URL(string: "https://play.cartesia.ai/keys")
+        case "azure speech":
+            return URL(
+                string:
+                    "https://portal.azure.com/#view/HubsExtension/BrowseResource/resourceType/Microsoft.CognitiveServices%2Faccounts"
+            )
         default:
             return nil
         }

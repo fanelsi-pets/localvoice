@@ -26305,6 +26305,95 @@
           }
         }
       }
+    },
+    "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аудіо зустрічі йде в Google за вашим ключем: розпізнає gemini-3.5-transcribe, спікерів так само розмічає локальний діаризатор. На безкоштовному тарифі Google використовує надіслане для покращення своїх моделей."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meeting audio goes to Google with your key: gemini-3.5-transcribe recognizes the speech, speakers are still labelled by the local diarizer. On the free tier Google uses what is sent to improve its models."
+          }
+        }
+      }
+    },
+    "Аудио встречи уходит в Microsoft Azure по вашему ключу, в регион вашего ресурса Speech: распознаёт MAI-Transcribe-2, спикеров по-прежнему размечает локальный диаризатор. По условиям Azure отправленное аудио не сохраняется." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аудіо зустрічі йде в Microsoft Azure за вашим ключем, у регіон вашого ресурсу Speech: розпізнає MAI-Transcribe-2, спікерів так само розмічає локальний діаризатор. За умовами Azure надіслане аудіо не зберігається."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meeting audio goes to Microsoft Azure with your key, to the region of your Speech resource: MAI-Transcribe-2 recognizes the speech, speakers are still labelled by the local diarizer. Under Azure's terms the audio is not retained."
+          }
+        }
+      }
+    },
+    "Microsoft's speech-to-text model (public preview): 60 languages with automatic detection, mixed speech, uses your dictionary; $0.10 per hour of audio through 2026" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель розпізнавання мовлення Microsoft (public preview): 60 мов з автовизначенням, змішане мовлення, використовує ваш словник; $0,10 за годину аудіо до кінця 2026"
+          }
+        }
+      }
+    },
+    "Add an Azure Speech key in AI Models to transcribe meetings with MAI-Transcribe-2." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додайте ключ Azure Speech у розділі AI Models, щоб розшифровувати зустрічі через MAI-Transcribe-2."
+          }
+        }
+      }
+    },
+    "Azure rejected the key. Check the key and the region of your Speech resource." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azure відхилив ключ. Перевірте ключ і регіон вашого ресурсу Speech."
+          }
+        }
+      }
+    },
+    "Region" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регіон"
+          }
+        }
+      }
+    },
+    "Azure region of your Speech resource, as shown next to its keys (for example northeurope)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регіон Azure вашого ресурсу Speech, як показано поруч із його ключами (наприклад northeurope)."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

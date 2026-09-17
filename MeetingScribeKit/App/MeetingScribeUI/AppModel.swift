@@ -211,9 +211,9 @@ public final class AppModel {
   public let settings: AppSettings
   public let store: LibraryStore
   public let engines: any EngineProviding
-  /// Облачное распознавание от хоста (ADR-010, LocalVoice — Gemini 3.5 Transcribe); `nil` — режим
-  /// `.gemini` в интерфейсе не показывается.
-  public let remoteTranscriber: (any RemoteTranscribing)?
+  /// Облачное распознавание от хоста по движку (ADR-010, LocalVoice — Gemini 3.5 Transcribe и Azure
+  /// MAI-Transcribe-2); облачный движок без провайдера в интерфейсе не показывается.
+  public let remoteTranscribers: [AsrEngineID: any RemoteTranscribing]
   /// Хранилище моделей: пути только через него (CLAUDE.md).
   public let modelStore: ModelStore
   /// Загрузчик моделей: боевой `ModelDownloader` или сценарный для UI-тестов.
@@ -368,14 +368,14 @@ public final class AppModel {
     engines: any EngineProviding,
     modelStore: ModelStore = .standard(),
     downloader: (any ModelDownloading)? = nil,
-    remoteTranscriber: (any RemoteTranscribing)? = nil,
+    remoteTranscribers: [AsrEngineID: any RemoteTranscribing] = [:],
     updater: (any UpdaterProviding)? = nil
   ) {
     self.updater = updater ?? NoUpdater()
     self.settings = settings
     self.store = store
     self.engines = engines
-    self.remoteTranscriber = remoteTranscriber
+    self.remoteTranscribers = remoteTranscribers
     self.modelStore = modelStore
     self.downloader = downloader ?? ScriptedModelDownloader(store: modelStore)
     self.onboarding = OnboardingController(settings: settings, modelStore: modelStore)
@@ -425,7 +425,7 @@ public final class AppModel {
     libraryDirectory: URL? = nil,
     modelsRoot: URL? = nil,
     defaultEngines: EngineSelection = .accurate,
-    remoteTranscriber: (any RemoteTranscribing)? = nil,
+    remoteTranscribers: [AsrEngineID: any RemoteTranscribing] = [:],
     updater: ((AppSettings) -> any UpdaterProviding)? = nil
   ) -> AppModel {
     let settings = AppSettings(defaultEngines: defaultEngines)
@@ -434,14 +434,14 @@ public final class AppModel {
     let engines: any EngineProviding =
       settings.useFakeEngines
       ? ScriptedEngines()
-      : ProductionEngines(modelStore: modelStore, remote: remoteTranscriber)
+      : ProductionEngines(modelStore: modelStore, remotes: remoteTranscribers)
     let downloader: any ModelDownloading =
       settings.useFakeEngines
       ? ScriptedModelDownloader(store: modelStore)
       : ModelDownloader(store: modelStore, downloaderVersion: MeetingScribeUIInfo.version)
     return AppModel(
       settings: settings, store: store, engines: engines, modelStore: modelStore,
-      downloader: downloader, remoteTranscriber: remoteTranscriber, updater: updater?(settings))
+      downloader: downloader, remoteTranscribers: remoteTranscribers, updater: updater?(settings))
   }
 
   /// Загрузка библиотеки при старте (активные статусы уже демотированы в `interrupted` хранилищем).
@@ -1691,4 +1691,12 @@ public final class ModelDownloadController {
 extension String {
   /// `nil` вместо пустой строки — чтобы `??` подставлял запасное значение.
   var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+extension AppModel {
+  /// Движки распознавания, доступные в этом приложении: локальные всегда, облачные — только те, для
+  /// которых хост дал провайдера с ключом (ADR-010).
+  public var availableAsrEngines: [AsrEngineID] {
+    AsrEngineID.allCases.filter { !$0.isCloud || remoteTranscribers[$0] != nil }
+  }
 }

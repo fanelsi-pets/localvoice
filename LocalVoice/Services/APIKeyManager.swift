@@ -24,6 +24,7 @@ final class APIKeyManager {
         "openai": "openAIAPIKey",
         "anthropic": "anthropicAPIKey",
         "openrouter": "openRouterAPIKey",
+        "azure speech": "azureSpeechAPIKey",
     ]
 
     private init() {}

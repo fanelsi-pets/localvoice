@@ -113,7 +113,7 @@ let package = Package(
     .testTarget(
       name: "EngineTests",
       dependencies: [
-        "Core", "WhisperKitAdapter", "RemoteAdapter",
+        "Core", "WhisperKitAdapter", "RemoteAdapter", "Engines",
         .product(name: "WhisperKit", package: "argmax-oss-swift"),
       ],
       path: "Tests/EngineTests"
