@@ -3,32 +3,74 @@ import Export
 import LocalLLM
 import SwiftUI
 
-/// Окно настроек (DESIGN.md §5): Общие, Движки и модели, Языки, Диагностика.
+/// Окно настроек (DESIGN.md §5): Общие, Движки и модели, Языки, Люди и голоса, Follow-up, Диагностика.
+/// Разделы — списком слева, а не системной панелью вкладок: панель вкладок центрируется одной строкой и
+/// её ширина растёт вместе с подписями (английские — почти 600 pt на 720 pt листа настроек), поэтому при
+/// другой версии macOS или увеличенном системном размере текста разделы наезжали друг на друга и до
+/// «Диагностики» со сбором отчёта о проблеме было не добраться. Ширина списка от длины подписей не зависит.
 struct SettingsView: View {
   @Bindable var model: AppModel
 
   var body: some View {
-    TabView(selection: $model.settingsTab) {
-      GeneralSettings(model: model, settings: model.settings)
-        .tabItem { Label(SettingsTab.general.title, systemImage: "gearshape") }
-        .tag(SettingsTab.general)
-      EngineSettings(model: model, settings: model.settings)
-        .tabItem { Label(SettingsTab.engines.title, systemImage: "cpu") }
-        .tag(SettingsTab.engines)
-      LanguageSettings(model: model, settings: model.settings)
-        .tabItem { Label(SettingsTab.languages.title, systemImage: "character.bubble") }
-        .tag(SettingsTab.languages)
-      PeopleSettings(model: model, settings: model.settings)
-        .tabItem { Label(SettingsTab.people.title, systemImage: "person.wave.2") }
-        .tag(SettingsTab.people)
-      FollowupSettings(settings: model.settings, generatorTitle: model.followupGenerator?.title)
-        .tabItem { Label(SettingsTab.followup.title, systemImage: "arrow.uturn.forward") }
-        .tag(SettingsTab.followup)
-      DiagnosticsSettings(model: model)
-        .tabItem { Label(SettingsTab.diagnostics.title, systemImage: "stethoscope") }
-        .tag(SettingsTab.diagnostics)
+    HStack(spacing: 0) {
+      sections
+      Divider()
+      section(for: model.settingsTab)
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
     }
     .frame(minWidth: 520, minHeight: 380)
+  }
+
+  /// Разделы: при крупном системном шрифте подпись переносится по строкам, а не обрезается.
+  private var sections: some View {
+    List(selection: selection) {
+      ForEach(SettingsTab.allCases, id: \.self) { tab in
+        Label(tab.title, systemImage: tab.symbol)
+          .lineLimit(nil)
+          .fixedSize(horizontal: false, vertical: true)
+          .tag(tab)
+      }
+    }
+    .listStyle(.sidebar)
+    .frame(width: 208)
+    .accessibilityIdentifier("settings.sections")
+  }
+
+  /// `List` умеет только необязательный выбор; снятие выделения раздел не меняет.
+  private var selection: Binding<SettingsTab?> {
+    Binding(get: { model.settingsTab }, set: { if let tab = $0 { model.settingsTab = tab } })
+  }
+
+  @ViewBuilder
+  private func section(for tab: SettingsTab) -> some View {
+    switch tab {
+    case .general:
+      GeneralSettings(model: model, settings: model.settings)
+    case .engines:
+      EngineSettings(model: model, settings: model.settings)
+    case .languages:
+      LanguageSettings(model: model, settings: model.settings)
+    case .people:
+      PeopleSettings(model: model, settings: model.settings)
+    case .followup:
+      FollowupSettings(settings: model.settings, generatorTitle: model.followupGenerator?.title)
+    case .diagnostics:
+      DiagnosticsSettings(model: model)
+    }
+  }
+}
+
+extension SettingsTab {
+  /// Значок раздела в списке настроек.
+  fileprivate var symbol: String {
+    switch self {
+    case .general: "gearshape"
+    case .engines: "cpu"
+    case .languages: "character.bubble"
+    case .people: "person.wave.2"
+    case .followup: "arrow.uturn.forward"
+    case .diagnostics: "stethoscope"
+    }
   }
 }
 

@@ -430,10 +430,8 @@ private struct MeetingsSettingsSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // A sheet has no title bar, so the tab bar would sit flush against the top edge
-            // and get clipped by the sheet's rounded corners; give it the inset a window provides.
+            // Sections live in a list on the left, so nothing needs the inset a title bar would give.
             MeetingsSettingsView(model: model)
-                .padding(.top, 14)
             Divider()
             HStack {
                 Spacer()
