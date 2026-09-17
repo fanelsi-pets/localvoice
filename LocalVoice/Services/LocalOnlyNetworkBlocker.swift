@@ -34,6 +34,10 @@ final class LocalOnlyNetworkBlocker: URLProtocol {
         allowedHosts.contains(host)
             || host.hasSuffix(".huggingface.co")
             || host.hasSuffix(".hf.co")
+            // Azure Speech (MAI-Transcribe-2): regional endpoint `{region}.api.cognitive.microsoft.com`
+            // and the resource's own `{name}.cognitiveservices.azure.com`.
+            || host.hasSuffix(".api.cognitive.microsoft.com")
+            || host.hasSuffix(".cognitiveservices.azure.com")
     }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
