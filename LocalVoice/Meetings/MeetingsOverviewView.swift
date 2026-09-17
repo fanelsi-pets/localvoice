@@ -130,7 +130,9 @@ private struct MeetingsHeroCard: View {
     private var subtitle: Text {
         switch phase {
         case .setup:
-            return Text("Download the models once and run the self-test. Everything stays on this Mac.")
+            return Text(
+                "Choose where to process meetings — in Azure or on this Mac — and run the self-test on the built-in sample."
+            )
         case .idle:
             return Text("Import a Zoom recording to get speakers, timecodes, names and project memory.")
         case .processing:

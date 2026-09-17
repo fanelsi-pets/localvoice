@@ -70,14 +70,27 @@ struct OverlapBadge: View {
   }
 }
 
-/// Индикатор приватности: вся обработка идёт на этом Mac (DESIGN.md §1, §9).
-struct LocalProcessingBadge: View {
+/// Индикатор места обработки (DESIGN.md §1, §9): замок — всё на этом Mac, облако — речь распознаёт
+/// провайдер, а голоса, имена и память проекта всё равно остаются здесь.
+struct ProcessingPlaceBadge: View {
+  var isCloud: Bool
+
   var body: some View {
-    Image(systemName: "lock.laptopcomputer")
+    Image(systemName: isCloud ? "cloud" : "lock.laptopcomputer")
       .foregroundStyle(.secondary)
-      .help("Обработка на этом Mac: записи никуда не отправляются")
-      .accessibilityLabel("Обработка на этом Mac")
+      .help(
+        isCloud
+          ? Text("Распознавание в облаке; голоса, имена и память проекта — на этом Mac")
+          : Text("Обработка на этом Mac: записи никуда не отправляются")
+      )
+      .accessibilityLabel(
+        isCloud ? Text("Распознавание в облаке") : Text("Обработка на этом Mac"))
   }
+}
+
+/// Индикатор для того, что считается только здесь: экспорт, vault, разбор follow-up.
+struct LocalProcessingBadge: View {
+  var body: some View { ProcessingPlaceBadge(isCloud: false) }
 }
 
 /// Длительность записи для строк и шапок.

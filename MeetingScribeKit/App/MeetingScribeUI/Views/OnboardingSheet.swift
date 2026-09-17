@@ -20,6 +20,10 @@ struct OnboardingSheet: View {
     }
     .padding()
     .frame(minWidth: 620, minHeight: 480)
+    // Самопроверка в облачном режиме — первая отправка в облако: ключ спрашивается поверх онбординга.
+    .sheet(item: model.cloudSetupBinding(for: .onboarding)) { prompt in
+      CloudSetupSheet(model: model, prompt: prompt)
+    }
     .task(id: onboarding.step) { await onboarding.refresh() }
     .onChange(of: model.modelDownloads.finishedText) { _, finished in
       guard finished != nil else { return }
@@ -121,7 +125,7 @@ struct OnboardingSheet: View {
       }
       Section {
         Text(
-          "Записи не покидают этот Mac: распознавание и разделение по голосам идут на Neural Engine и GPU. Интернет нужен один раз — скачать модели."
+          "Разделение по голосам, имена, память проекта и экспорт всегда считаются на этом Mac — на Neural Engine и GPU. Где распознавать речь, вы выберете на следующем шаге."
         )
         .font(.callout)
         .foregroundStyle(.secondary)
@@ -150,18 +154,18 @@ struct OnboardingSheet: View {
         .font(.caption)
         .foregroundStyle(.secondary)
       }
-      Section("Режим обработки по умолчанию") {
+      Section("Где обрабатывать встречи") {
         Picker(
-          "Режим",
-          selection: Binding(get: { onboarding.mode }, set: { onboarding.mode = $0 })
+          "Обработка",
+          selection: Binding(get: { onboarding.place }, set: { onboarding.place = $0 })
         ) {
-          ForEach(ProcessingMode.allCases) { mode in
-            Text(mode.title).tag(mode)
+          ForEach(onboarding.availablePlaces) { place in
+            Text(place.title).tag(place)
           }
         }
         .pickerStyle(.segmented)
         .accessibilityIdentifier("onboarding.mode")
-        Text(onboarding.mode.detail(accurate: onboarding.accurateSelection))
+        Text(onboarding.detail(for: onboarding.place))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -309,7 +313,7 @@ struct OnboardingSheet: View {
             model.selfTest.hasResult
               ? String(localized: "Повторить") : String(localized: "Запустить проверку")
           ) {
-            model.startSelfTest()
+            model.startSelfTest(origin: .onboarding)
           }
           .accessibilityIdentifier("onboarding.selftest.run")
         }

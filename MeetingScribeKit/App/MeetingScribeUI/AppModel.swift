@@ -204,6 +204,37 @@ nonisolated public struct AppAlert: Identifiable, Hashable, Sendable {
   }
 }
 
+/// Откуда пришёл запрос ключа: sheet показывает то окно, из которого нажали, иначе он вылезет за спиной
+/// у настроек или онбординга и его никто не увидит.
+public enum CloudSetupOrigin: Hashable, Sendable {
+  case library
+  case onboarding
+  case settings
+}
+
+/// Экран ввода ключа облачного провайдера: показывается перед первой облачной обработкой, пока ключа нет.
+/// Встречи из `meetingIDs` ждут ответа — после ввода ключа они уходят в очередь сами.
+public struct CloudSetupPrompt: Identifiable, Sendable {
+  public let id = UUID()
+  public var engine: AsrEngineID
+  public var request: RemoteSetupRequest
+  public var meetingIDs: [UUID]
+  /// Ключ спросили ради самопроверки на сэмпле — после ввода запускаем её, а не встречу.
+  public var runsSelfTest: Bool
+  public var origin: CloudSetupOrigin
+
+  public init(
+    engine: AsrEngineID, request: RemoteSetupRequest, meetingIDs: [UUID],
+    runsSelfTest: Bool = false, origin: CloudSetupOrigin = .library
+  ) {
+    self.engine = engine
+    self.request = request
+    self.meetingIDs = meetingIDs
+    self.runsSelfTest = runsSelfTest
+    self.origin = origin
+  }
+}
+
 /// Корневая модель приложения: библиотека встреч, выбор, импорт, экспорт, транскрипт открытой встречи.
 /// Живёт в `App` (одна на процесс), окна и команды меню читают её через `@Bindable`/параметры.
 @Observable
@@ -306,6 +337,11 @@ public final class AppModel {
   public var alert: AppAlert?
   public var presentedHelp: HelpTopic?
   public var isGoToTimecodePresented = false
+  /// Разовый вопрос «где обрабатывать встречи»: облако появилось у тех, кто уже пользовался приложением,
+  /// и молча уводить их записи в чужой дата-центр нельзя.
+  public var isProcessingPlaceQuestionPresented = false
+  /// Экран ввода ключа облачного провайдера (`nil` — закрыт).
+  public var cloudSetup: CloudSetupPrompt?
   /// Встреча, для которой открыт диалог «Импорт follow-up» (`nil` — диалог закрыт).
   public var followupImportMeetingID: UUID?
   /// Открыть диалог сразу в режиме генерации локальной моделью.
@@ -378,7 +414,12 @@ public final class AppModel {
     self.remoteTranscribers = remoteTranscribers
     self.modelStore = modelStore
     self.downloader = downloader ?? ScriptedModelDownloader(store: modelStore)
-    self.onboarding = OnboardingController(settings: settings, modelStore: modelStore)
+    // Облачный движок хоста нужен онбордингу до того, как модель соберётся целиком.
+    let cloud: AsrEngineID? =
+      remoteTranscribers[.azure] != nil
+      ? .azure : AsrEngineID.allCases.first { $0.isCloud && remoteTranscribers[$0] != nil }
+    self.onboarding = OnboardingController(
+      settings: settings, modelStore: modelStore, cloudEngine: cloud)
     let sourceBookmarks = SourceBookmarkStore(
       directory: store.directory.appending(path: "bookmarks", directoryHint: .isDirectory))
     self.sourceBookmarks = sourceBookmarks
@@ -462,6 +503,19 @@ public final class AppModel {
     }
     // Первый запуск: онбординг открывается сам, пока не пройден и не пропущен (SPEC.md §2 п. 8).
     onboarding.presentIfNeeded()
+    // Обновление, в котором появилось облако: спрашиваем один раз, где обрабатывать встречи.
+    if !onboarding.isPresented, settings.onboardingCompleted, !settings.cloudDefaultAnswered,
+      cloudEngine != nil
+    {
+      isProcessingPlaceQuestionPresented = true
+    }
+  }
+
+  /// Ответ на разовый вопрос о месте обработки: выбор запоминается, второй раз не спрашиваем.
+  public func answerProcessingPlace(_ place: ProcessingPlace) {
+    settings.setProcessingPlace(place, cloud: cloudEngine ?? .azure)
+    settings.cloudDefaultAnswered = true
+    isProcessingPlaceQuestionPresented = false
   }
 
   // MARK: - Выбор
@@ -795,7 +849,7 @@ public final class AppModel {
       // через закладку (ADR-010); без песочницы закладка безвредна.
       sourceBookmarks.save(item.accessRoot, for: record.id)
       if firstID == nil { firstID = record.id }
-      coordinator.enqueue(record, projectName: projectName)
+      enqueue(record, projectName: projectName)
     }
     saveLibrary()
     requestNotificationAuthorizationIfNeeded()
@@ -878,8 +932,76 @@ public final class AppModel {
   /// «Обработать» / «Повторить обработку».
   public func process(_ id: UUID) {
     guard let record = library.meeting(id: id), canProcess(record) else { return }
+    enqueue(record, projectName: projectName(for: record))
+    requestNotificationAuthorizationIfNeeded()
+  }
+
+  /// Обработать встречу на этом Mac: движки записи меняются на локальные (кнопка после отказа облака).
+  public func processLocally(_ id: UUID) {
+    guard var record = library.meeting(id: id), canProcess(record) else { return }
+    record.engines = settings.localEngines
+    library.upsert(record)
+    saveLibrary()
     coordinator.enqueue(record, projectName: projectName(for: record))
     requestNotificationAuthorizationIfNeeded()
+  }
+
+  /// Ставит встречу в очередь. Облачная обработка без ключа сначала просит ключ отдельным экраном:
+  /// запись остаётся импортированной и уходит в очередь сразу после ввода.
+  private func enqueue(_ record: MeetingRecord, projectName: String?) {
+    guard record.engines.asr.isCloud, let transcriber = remoteTranscribers[record.engines.asr]
+    else {
+      coordinator.enqueue(record, projectName: projectName)
+      return
+    }
+    let engine = record.engines.asr
+    Task {
+      guard let request = await transcriber.setupRequest() else {
+        coordinator.enqueue(record, projectName: projectName)
+        return
+      }
+      // Диалог импорта только что закрылся: SwiftUI не показывает второй sheet в том же такте.
+      await Task.yield()
+      if cloudSetup?.engine == engine {
+        cloudSetup?.meetingIDs.append(record.id)
+      } else {
+        cloudSetup = CloudSetupPrompt(
+          engine: engine, request: request, meetingIDs: [record.id])
+      }
+    }
+  }
+
+  /// Ключ с экрана настройки: провайдер проверяет его сам. `nil` — принят, встречи уходят в очередь.
+  public func completeCloudSetup(_ value: String) async -> String? {
+    guard let prompt = cloudSetup, let transcriber = remoteTranscribers[prompt.engine] else {
+      return nil
+    }
+    if let error = await transcriber.completeSetup(value: value) { return error }
+    cloudSetup = nil
+    for id in prompt.meetingIDs {
+      guard let record = library.meeting(id: id), canProcess(record) else { continue }
+      coordinator.enqueue(record, projectName: projectName(for: record))
+    }
+    if !prompt.meetingIDs.isEmpty { requestNotificationAuthorizationIfNeeded() }
+    if prompt.runsSelfTest { runSelfTest(with: settings.engines) }
+    return nil
+  }
+
+  /// «Обработать на этом Mac» на экране ключа: ждущие встречи переключаются на локальные движки,
+  /// а самопроверка — вместе с настройкой: пользователь только что сказал, что облако ему не нужно.
+  public func processCloudSetupLocally() {
+    guard let prompt = cloudSetup else { return }
+    cloudSetup = nil
+    for id in prompt.meetingIDs { processLocally(id) }
+    guard prompt.runsSelfTest else { return }
+    settings.setProcessingPlace(.local, cloud: prompt.engine)
+    settings.cloudDefaultAnswered = true
+    runSelfTest(with: settings.engines)
+  }
+
+  /// «Позже»: встречи остаются импортированными — их видно в списке и можно запустить кнопкой.
+  public func dismissCloudSetup() {
+    cloudSetup = nil
   }
 
   public func cancel(_ id: UUID) {
@@ -1205,12 +1327,29 @@ public final class AppModel {
   }
 
   /// «Запустить проверку» (онбординг и вкладка «Диагностика»): встроенный сэмпл через боевой пайплайн.
-  public func startSelfTest() {
+  /// В облачном режиме проверка и есть первая отправка в облако — значит, сначала ключ.
+  public func startSelfTest(origin: CloudSetupOrigin = .settings) {
     guard !selfTest.isRunning else { return }
+    let selection = settings.engines
+    guard selection.asr.isCloud, let transcriber = remoteTranscribers[selection.asr] else {
+      runSelfTest(with: selection)
+      return
+    }
+    Task {
+      guard let request = await transcriber.setupRequest() else {
+        runSelfTest(with: selection)
+        return
+      }
+      cloudSetup = CloudSetupPrompt(
+        engine: selection.asr, request: request, meetingIDs: [], runsSelfTest: true, origin: origin)
+    }
+  }
+
+  private func runSelfTest(with selection: EngineSelection) {
     do {
       let sample = try SelfTestSampleResource.load()
       selfTest.start(
-        engines: engines, selection: settings.engines, sample: sample,
+        engines: engines, selection: selection, sample: sample,
         cacheDirectory: selfTestCacheDirectory, store: store)
     } catch {
       selfTest.fail(error.localizedDescription)
@@ -1698,5 +1837,23 @@ extension AppModel {
   /// которых хост дал провайдера с ключом (ADR-010).
   public var availableAsrEngines: [AsrEngineID] {
     AsrEngineID.allCases.filter { !$0.isCloud || remoteTranscribers[$0] != nil }
+  }
+
+  /// Показ экрана ключа тем окном, из которого пришёл запрос; закрытие — «Позже».
+  public func cloudSetupBinding(for origin: CloudSetupOrigin) -> Binding<CloudSetupPrompt?> {
+    Binding(
+      get: { [weak self] in self?.cloudSetup?.origin == origin ? self?.cloudSetup : nil },
+      set: { [weak self] value in if value == nil { self?.dismissCloudSetup() } })
+  }
+
+  /// Облачный движок этого приложения (в LocalVoice — Azure MAI-Transcribe-2); `nil` — облака нет.
+  public var cloudEngine: AsrEngineID? {
+    let cloud = availableAsrEngines.filter(\.isCloud)
+    return cloud.contains(.azure) ? .azure : cloud.first
+  }
+
+  /// Локальные движки — для выбора «на этом Mac».
+  public var localAsrEngines: [AsrEngineID] {
+    availableAsrEngines.filter { !$0.isCloud }
   }
 }

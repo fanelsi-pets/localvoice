@@ -122,16 +122,4 @@ struct GeminiTranscribeClientTests {
         #expect(GeminiTranscribeClient.offsetSeconds("nonsense") == nil)
         #expect(GeminiTranscribeClient.offsetSeconds(nil) == nil)
     }
-
-    @Test("Provider failures: 429 and 5xx are retryable, a missing model is not")
-    func retryClassification() {
-        let overloaded = GeminiMeetingTranscriber.mapped(
-            CloudTranscriptionError.apiRequestFailed(statusCode: 429, message: "quota"))
-        #expect((overloaded as? RemoteTranscriptionError)?.isRetryable == true)
-        let missing = GeminiMeetingTranscriber.mapped(
-            CloudTranscriptionError.apiRequestFailed(statusCode: 404, message: "not found"))
-        #expect((missing as? RemoteTranscriptionError)?.isRetryable == false)
-        let network = GeminiMeetingTranscriber.mapped(CloudTranscriptionError.networkError(URLError(.timedOut)))
-        #expect((network as? RemoteTranscriptionError)?.isRetryable == true)
-    }
 }

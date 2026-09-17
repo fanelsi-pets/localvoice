@@ -12,11 +12,12 @@ import OSLog
 final class MeetingsHost {
     static let shared = MeetingsHost()
     static let windowID = "meetings"
-    /// Maximum quality by default: WhisperKit large-v3 (not turbo) with SpeakerKit diarization; users who
-    /// prefer speed pick turbo or Parakeet in Meeting Settings.
+    /// Cloud by default: Azure MAI-Transcribe-2 recognizes the speech, SpeakerKit separates the voices on
+    /// this Mac. The Azure Speech key is asked for once, on its own screen before the first cloud run
+    /// (`MeetingCloudCredentials`). "On this Mac" stays one click away in Meeting Settings and falls back
+    /// to WhisperKit large-v3 turbo.
     static let defaultEngines = EngineSelection(
-        asr: .whisperkit, whisperModel: .whisperLargeV3, diarizer: .speakerkit)
-    private static let appliedDefaultEnginesKey = "MeetingsAppliedMaxQualityDefault"
+        asr: .azure, whisperModel: .whisperLargeV3Turbo, diarizer: .speakerkit)
 
     let model: MeetingScribeUI.AppModel
     let dataDirectory: URL
@@ -34,20 +35,15 @@ final class MeetingsHost {
             libraryDirectory: dataDirectory,
             modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true),
             defaultEngines: Self.defaultEngines,
-            // Облачные режимы в диалоге импорта: ключи и сеть — на стороне хоста (ADR-010).
-            remoteTranscribers: [
-                .gemini: GeminiMeetingTranscriber(),
-                .azure: AzureMeetingTranscriber(),
-            ]
+            // Облако встреч — только Azure (ADR-010): ключ и сеть на стороне хоста. Gemini здесь больше нет:
+            // на том же куске он терял слова, а на бесплатном тире Google учится на отправленном аудио.
+            remoteTranscribers: [.azure: AzureMeetingTranscriber()]
         )
         model.windowTitle = String(localized: "Meetings")
-        // One-time: builds before this default stored turbo through onboarding; move WhisperKit users to
-        // large-v3 once, keep an explicit Parakeet choice.
-        if !UserDefaults.standard.bool(forKey: Self.appliedDefaultEnginesKey) {
-            if model.settings.engines.asr == .whisperkit {
-                model.settings.engines = Self.defaultEngines
-            }
-            UserDefaults.standard.set(true, forKey: Self.appliedDefaultEnginesKey)
+        // Записи, обработанные Gemini, остаются читаемыми, но новые встречи в этом движке не запускаются:
+        // выбор переезжает на Azure, локальный выбор пользователя не трогаем.
+        if model.settings.engines.asr == .gemini {
+            model.settings.setProcessingPlace(.cloud, cloud: .azure)
         }
     }
 

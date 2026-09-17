@@ -28,11 +28,12 @@ nonisolated public enum OnboardingStep: String, CaseIterable, Hashable, Sendable
     case .welcome:
       String(
         localized:
-          "MeetingScribe расшифровывает встречи на этом Mac: записи никуда не отправляются.")
+          "MeetingScribe расшифровывает встречи: голоса, имена и память проекта — всегда на этом Mac, распознавание речи — здесь же или в облаке, по вашему выбору."
+      )
     case .languages:
       String(
         localized:
-          "Выберите языки, на которых говорят на ваших встречах, и режим обработки по умолчанию.")
+          "Выберите языки, на которых говорят на ваших встречах, и где обрабатывать записи.")
     case .models:
       String(localized: "Модели скачиваются один раз с Hugging Face и лежат в папке приложения.")
     case .selfTest:
@@ -45,38 +46,6 @@ nonisolated public enum OnboardingStep: String, CaseIterable, Hashable, Sendable
   }
 }
 
-/// Режим обработки по умолчанию (DESIGN.md §5 п. 2): «точный» — WhisperKit с моделью из умолчания хоста
-/// (`AppSettings.accurateSelection`: turbo у MeetingScribe, large-v3 у LocalVoice), «быстрый» — Parakeet.
-nonisolated public enum ProcessingMode: String, CaseIterable, Hashable, Sendable, Identifiable {
-  case accurate
-  case fast
-
-  public var id: String { rawValue }
-
-  public var title: String {
-    switch self {
-    case .accurate: String(localized: "Точный")
-    case .fast: String(localized: "Быстрый")
-    }
-  }
-
-  /// Пояснение к режиму; `accurate` — выбор движков «точного» режима (модель зависит от хоста).
-  public func detail(accurate: EngineSelection) -> String {
-    switch self {
-    case .accurate:
-      String(localized: "\(accurate.title): лучшее качество на русском и украинском")
-    case .fast: String(localized: "Parakeet TDT v3: в разы быстрее, слабее на смешанной речи")
-    }
-  }
-
-  public var selection: EngineSelection {
-    switch self {
-    case .accurate: .accurate
-    case .fast: .fast
-    }
-  }
-}
-
 /// Онбординг первого запуска: пять шагов, состояние переживает закрытие sheet (Help → «Первый запуск…»
 /// открывает его на том же месте). Скачивание и самопроверка живут в своих контроллерах `AppModel` —
 /// шаг моделей можно свернуть, загрузка продолжится (SPEC.md §3.7 п. 8, 10).
@@ -84,6 +53,8 @@ nonisolated public enum ProcessingMode: String, CaseIterable, Hashable, Sendable
 public final class OnboardingController {
   public let settings: AppSettings
   public let modelStore: ModelStore
+  /// Облачный движок приложения (`nil` — хост облака не дал): от него зависит, предлагать ли облако.
+  public let cloudEngine: AsrEngineID?
 
   /// Sheet показан.
   public var isPresented = false
@@ -112,6 +83,7 @@ public final class OnboardingController {
   public init(
     settings: AppSettings,
     modelStore: ModelStore,
+    cloudEngine: AsrEngineID? = nil,
     systemInfo: @escaping @Sendable () -> SystemInfo = { SystemInfo.current() },
     availableDiskBytes: @escaping @Sendable (URL) -> Int64? = {
       SystemInfo.availableDiskBytes(at: $0)
@@ -119,6 +91,7 @@ public final class OnboardingController {
   ) {
     self.settings = settings
     self.modelStore = modelStore
+    self.cloudEngine = cloudEngine
     self.systemInfoProvider = systemInfo
     self.diskBytesProvider = availableDiskBytes
   }
@@ -192,11 +165,13 @@ public final class OnboardingController {
   /// «Пропустить» и «Начать» одинаково закрывают первый запуск: sheet сам больше не появится.
   public func skip() {
     settings.onboardingCompleted = true
+    settings.cloudDefaultAnswered = true
     isPresented = false
   }
 
   public func finish() {
     settings.onboardingCompleted = true
+    settings.cloudDefaultAnswered = true
     isPresented = false
   }
 
@@ -218,11 +193,35 @@ public final class OnboardingController {
     settings.meetingLanguages = languages
   }
 
-  public var mode: ProcessingMode {
-    get { settings.engines.asr == .parakeet ? .fast : .accurate }
+  /// Где обрабатывать встречи. Ответ здесь считается ответом на вопрос о месте обработки: разовый лист
+  /// после обновления такому пользователю уже не нужен.
+  public var place: ProcessingPlace {
+    get { settings.processingPlace }
     set {
-      guard newValue != mode else { return }
-      settings.engines = newValue == .fast ? .fast : settings.accurateSelection
+      settings.cloudDefaultAnswered = true
+      guard newValue != settings.processingPlace else { return }
+      settings.setProcessingPlace(newValue, cloud: cloudEngine ?? .azure)
+    }
+  }
+
+  /// Места обработки, между которыми есть смысл выбирать: без провайдера у хоста облака нет.
+  public var availablePlaces: [ProcessingPlace] {
+    cloudEngine == nil ? [.local] : ProcessingPlace.allCases
+  }
+
+  /// Пояснение к месту обработки — под переключателем в онбординге.
+  public func detail(for place: ProcessingPlace) -> String {
+    switch place {
+    case .cloud:
+      String(
+        localized:
+          "Распознаёт Azure MAI-Transcribe-2: минуты вместо десятков минут, модели распознавания качать не нужно. Аудио встречи уходит в Azure, голоса и имена остаются здесь."
+      )
+    case .local:
+      String(
+        localized:
+          "\(settings.localEngines.title): запись не покидает компьютер, но нужны модели и заметно больше времени."
+      )
     }
   }
 

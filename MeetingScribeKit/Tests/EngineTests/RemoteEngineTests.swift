@@ -159,3 +159,103 @@ struct CloudEngineWiringTests {
     #expect(EngineSelection(asr: .azure, diarizer: .speakerkit).title.hasPrefix("MAI-Transcribe-2"))
   }
 }
+
+/// Сколько запросов провайдер обслуживал одновременно и в каком порядке они приходили.
+private actor ConcurrencyProbe {
+  private(set) var maxInFlight = 0
+  private(set) var clips: [String] = []
+  private var inFlight = 0
+
+  func begin(_ clip: String) {
+    inFlight += 1
+    maxInFlight = max(maxInFlight, inFlight)
+    clips.append(clip)
+  }
+
+  func end() { inFlight -= 1 }
+}
+
+/// Провайдер, у которого поздние куски отвечают раньше ранних: так видно, что лента идёт по порядку,
+/// а не по времени ответа.
+private struct ShuffledRemote: RemoteTranscribing {
+  let probe: ConcurrencyProbe
+  let title = "Shuffled"
+  let model = "shuffled"
+  /// Предел куска — минута: в тесте не нужен получасовой буфер.
+  let maximumClipSeconds: Double = 60
+
+  func availability() async -> RemoteTranscriberAvailability { .available }
+
+  func transcribe(clip url: URL, mimeType: String, duration: Double, language: Language?)
+    async throws -> [RemoteWord]
+  {
+    let name = url.deletingPathExtension().lastPathComponent
+    let index = Int(name.split(separator: "-").last.map(String.init) ?? "0") ?? 0
+    await probe.begin(name)
+    try await Task.sleep(for: .milliseconds(60 - index * 15))
+    await probe.end()
+    return [RemoteWord(text: "кусок\(index)", start: 0.1, end: 0.6)]
+  }
+}
+
+/// Собирает ленту и прогресс из @Sendable-замыканий движка.
+private final class Collector: @unchecked Sendable {
+  private let lock = NSLock()
+  private(set) var segments: [Segment] = []
+  private(set) var processed: [Double] = []
+
+  func add(_ batch: [Segment]) {
+    lock.lock()
+    defer { lock.unlock() }
+    segments.append(contentsOf: batch)
+  }
+
+  func add(processed value: Double) {
+    lock.lock()
+    defer { lock.unlock() }
+    processed.append(value)
+  }
+}
+
+@Suite("Облачное распознавание: параллельные куски")
+struct RemoteParallelTests {
+  @Test("Куски уезжают пачкой, лента идёт по порядку, прогресс не пятится")
+  func chunksGoInParallel() async throws {
+    let probe = ConcurrencyProbe()
+    let workRoot = FileManager.default.temporaryDirectory
+      .appendingPathComponent("remote-parallel-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: workRoot) }
+    let engine = RemoteAsrEngine(client: ShuffledRemote(probe: probe), workRoot: workRoot)
+
+    // Четыре куска по минуте: речь короткими вставками, остальное тишина — FLAC пишется быстро.
+    var samples = [Float](repeating: 0, count: PCMAudio.sampleIndex(forSeconds: 240))
+    for start in stride(from: 0, to: 240, by: 60) {
+      let lower = PCMAudio.sampleIndex(forSeconds: Double(start))
+      let upper = PCMAudio.sampleIndex(forSeconds: Double(start) + 1)
+      for index in lower..<upper { samples[index] = index.isMultiple(of: 2) ? 0.4 : -0.4 }
+    }
+    let collector = Collector()
+    let segments = try await engine.transcribe(
+      PCMAudio(samples: samples),
+      options: AsrOptions(),
+      progress: { event in
+        if let processed = event.processedAudioSeconds { collector.add(processed: processed) }
+      },
+      discovered: { collector.add($0) })
+
+    let clips = await probe.clips
+    #expect(clips.count == 4)
+    // Больше одного запроса одновременно, но не больше предела.
+    let maxInFlight = await probe.maxInFlight
+    #expect(maxInFlight > 1)
+    #expect(maxInFlight <= RemoteAsrEngine.concurrentRequests)
+
+    #expect(segments.map(\.text) == ["кусок0", "кусок1", "кусок2", "кусок3"])
+    #expect(collector.segments.map(\.text) == segments.map(\.text))
+    #expect(segments.map(\.start) == segments.map(\.start).sorted())
+
+    let processed = collector.processed
+    #expect(processed == processed.sorted())
+    #expect(abs((processed.last ?? 0) - 240) < 0.001)
+  }
+}

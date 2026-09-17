@@ -25,7 +25,7 @@ struct EmptyStateView: View {
       VStack(spacing: 12) {
         Button("Открыть…") { model.presentFileImporter() }
           .accessibilityIdentifier("import.button.empty")
-        LocalProcessingBadge()
+        ProcessingPlaceBadge(isCloud: model.settings.processingPlace == .cloud)
       }
     }
     .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in

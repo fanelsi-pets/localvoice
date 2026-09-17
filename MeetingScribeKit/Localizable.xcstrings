@@ -341,6 +341,23 @@
         }
       }
     },
+    "%@: готов": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: готово"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: done"
+          }
+        }
+      }
+    },
     "%@: запись %@ пропущена — %@": {
       "extractionState": "manual",
       "localizations": {
@@ -354,6 +371,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@: record %@ skipped — %@"
+          }
+        }
+      }
+    },
+    "%@: запись не покидает компьютер, но нужны модели и заметно больше времени.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: запис не залишає комп'ютер, але потрібні моделі й помітно більше часу."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: the recording never leaves the computer, but it needs models and noticeably more time."
           }
         }
       }
@@ -392,6 +426,23 @@
         }
       }
     },
+    "%@: настройка не требуется": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: налаштування не потрібне"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: no setup needed"
+          }
+        }
+      }
+    },
     "%@: не хватает файлов (%@) — скачайте модель заново": {
       "extractionState": "manual",
       "localizations": {
@@ -422,6 +473,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@: an Apple Silicon Mac is required — recognition models run on the Neural Engine"
+          }
+        }
+      }
+    },
+    "%@: отправка": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: надсилання"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: uploading"
+          }
+        }
+      }
+    },
+    "%@: повтор после ответа «%@»": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: повтор після відповіді «%@»"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: retrying after the reply “%@”"
           }
         }
       }
@@ -1900,6 +1985,23 @@
         }
       }
     },
+    "MeetingScribe расшифровывает встречи: голоса, имена и память проекта — всегда на этом Mac, распознавание речи — здесь же или в облаке, по вашему выбору.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MeetingScribe розшифровує зустрічі: голоси, імена й пам'ять проєкту — завжди на цьому Mac, розпізнавання мовлення — тут само або у хмарі, на ваш вибір."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MeetingScribe transcribes meetings: voices, names and project memory always stay on this Mac; speech recognition runs here or in the cloud, as you choose."
+          }
+        }
+      }
+    },
     "Metal недоступен": {
       "extractionState": "manual",
       "localizations": {
@@ -2274,6 +2376,74 @@
         }
       }
     },
+    "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудіо зустрічі йде в Google за вашим ключем: розпізнає gemini-3.5-transcribe, спікерів так само розмічає локальний діаризатор. На безкоштовному тарифі Google використовує надіслане для покращення своїх моделей."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meeting audio goes to Google with your key: gemini-3.5-transcribe recognizes the speech, speakers are still labelled by the local diarizer. On the free tier Google uses what is sent to improve its models."
+          }
+        }
+      }
+    },
+    "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe. Голоса и имена остаются на этом Mac.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудіо зустрічі йде в Google за вашим ключем: розпізнає gemini-3.5-transcribe. Голоси й імена залишаються на цьому Mac."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The meeting audio goes to Google with your key: gemini-3.5-transcribe does the recognition. Voices and names stay on this Mac."
+          }
+        }
+      }
+    },
+    "Аудио встречи уходит в Microsoft Azure по вашему ключу, в регион вашего ресурса Speech: распознаёт MAI-Transcribe-2, спикеров по-прежнему размечает локальный диаризатор. По условиям Azure отправленное аудио не сохраняется.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудіо зустрічі йде в Microsoft Azure за вашим ключем, у регіон вашого ресурсу Speech: розпізнає MAI-Transcribe-2, спікерів так само розмічає локальний діаризатор. За умовами Azure надіслане аудіо не зберігається."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meeting audio goes to Microsoft Azure with your key, to the region of your Speech resource: MAI-Transcribe-2 recognizes the speech, speakers are still labelled by the local diarizer. Under Azure's terms the audio is not retained."
+          }
+        }
+      }
+    },
+    "Аудио встречи уходит в Microsoft Azure по вашему ключу: распознаёт MAI-Transcribe-2, по условиям Azure отправленное аудио не сохраняется. Голоса, имена и память проекта остаются на этом Mac.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Аудіо зустрічі йде в Microsoft Azure за вашим ключем: розпізнає MAI-Transcribe-2, за умовами Azure надіслане аудіо не зберігається. Голоси, імена й пам'ять проєкту залишаються на цьому Mac."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The meeting audio goes to Microsoft Azure with your key: MAI-Transcribe-2 does the recognition, and under Azure's terms the audio is not retained. Voices, names and project memory stay on this Mac."
+          }
+        }
+      }
+    },
     "База библиотеки %@ недоступна: %@. Закройте второй экземпляр приложения и проверьте права на папку %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -2474,6 +2644,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "There are no utterances of this speaker between %@ and %@."
+          }
+        }
+      }
+    },
+    "В облаке": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У хмарі"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the cloud"
           }
         }
       }
@@ -3192,6 +3379,23 @@
         }
       }
     },
+    "Выберите языки, на которых говорят на ваших встречах, и где обрабатывать записи.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Виберіть мови, якими говорять на ваших зустрічах, і де обробляти записи."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the languages spoken at your meetings and where to process the recordings."
+          }
+        }
+      }
+    },
     "Выберите языки, на которых говорят на ваших встречах, и режим обработки по умолчанию.": {
       "extractionState": "manual",
       "localizations": {
@@ -3273,6 +3477,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "GB"
+          }
+        }
+      }
+    },
+    "Где обрабатывать встречи": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Де обробляти зустрічі"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where to process meetings"
+          }
+        }
+      }
+    },
+    "Где обрабатывать встречи?": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Де обробляти зустрічі?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where to process meetings?"
           }
         }
       }
@@ -3645,6 +3883,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "The %@ engine is not prepared: the models are not loaded."
+          }
+        }
+      }
+    },
+    "Движок на этом Mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рушій на цьому Mac"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engine on this Mac"
           }
         }
       }
@@ -4068,6 +4323,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Recordings never leave this Mac: recognition and speaker separation run on the Neural Engine and the GPU. The internet is needed once — to download the models."
+          }
+        }
+      }
+    },
+    "Запись не покидает компьютер. Нужны модели WhisperKit (около 1,6 ГБ) и заметно больше времени на обработку.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запис не залишає комп'ютер. Потрібні моделі WhisperKit (близько 1,6 ГБ) і помітно більше часу на обробку."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The recording never leaves the computer. It needs WhisperKit models (about 1.6 GB) and noticeably more time."
+          }
+        }
+      }
+    },
+    "Запись не покидает этот Mac. Модели скачиваются один раз, обработка идёт на Neural Engine и GPU.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запис не залишає цей Mac. Моделі завантажуються один раз, обробка йде на Neural Engine і GPU."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The recording never leaves this Mac. Models download once; processing runs on the Neural Engine and GPU."
           }
         }
       }
@@ -5092,6 +5381,23 @@
         }
       }
     },
+    "Минуты вместо десятков минут и лучше на смешанной русско-украинской речи. Аудио встречи уходит в Azure; по условиям Azure отправленное не сохраняется. Нужен ключ Azure Speech — его спросят перед первой обработкой. Модели распознавания скачивать не нужно.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хвилини замість десятків хвилин і краще на змішаному російсько-українському мовленні. Аудіо зустрічі йде в Azure; за умовами Azure надіслане не зберігається. Потрібен ключ Azure Speech — його запитають перед першою обробкою. Моделі розпізнавання завантажувати не треба."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minutes instead of tens of minutes, and better on mixed Russian and Ukrainian speech. The meeting audio goes to Azure, which does not keep it. An Azure Speech key is required — you will be asked for it before the first run. No recognition models to download."
+          }
+        }
+      }
+    },
     "Модели": {
       "extractionState": "manual",
       "localizations": {
@@ -5360,6 +5666,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "On video: %@"
+          }
+        }
+      }
+    },
+    "На этом Mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цьому Mac"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On this Mac"
           }
         }
       }
@@ -6395,6 +6718,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Process"
+          }
+        }
+      }
+    },
+    "Обработать на этом Mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обробити на цьому Mac"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Process on this Mac"
           }
         }
       }
@@ -8184,6 +8524,23 @@
         }
       }
     },
+    "Позже": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пізніше"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        }
+      }
+    },
     "Поиск «%@» не выполнился: %@. Попробуйте повторить запрос; если не помогает, перезапустите приложение.": {
       "extractionState": "manual",
       "localizations": {
@@ -8813,6 +9170,23 @@
         }
       }
     },
+    "Проверить и продолжить": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірити й продовжити"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check and continue"
+          }
+        }
+      }
+    },
     "Проверить обновления…": {
       "extractionState": "manual",
       "localizations": {
@@ -9013,6 +9387,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Check for updates automatically"
+          }
+        }
+      }
+    },
+    "Проверяю ключ у провайдера…": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевіряю ключ у провайдера…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the key with the provider…"
           }
         }
       }
@@ -9306,6 +9697,23 @@
         }
       }
     },
+    "Разделение по голосам, имена, память проекта и экспорт всегда считаются на этом Mac — на Neural Engine и GPU. Где распознавать речь, вы выберете на следующем шаге.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розділення за голосами, імена, пам'ять проєкту й експорт завжди рахуються на цьому Mac — на Neural Engine і GPU. Де розпізнавати мовлення, ви виберете на наступному кроці."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speaker separation, names, project memory and export always run on this Mac, on the Neural Engine and GPU. You choose where to recognize speech on the next step."
+          }
+        }
+      }
+    },
     "Разделить": {
       "extractionState": "manual",
       "localizations": {
@@ -9510,6 +9918,57 @@
         }
       }
     },
+    "Распознавание в облаке": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розпізнавання у хмарі"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognition in the cloud"
+          }
+        }
+      }
+    },
+    "Распознавание в облаке; голоса, имена и память проекта — на этом Mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розпізнавання у хмарі; голоси, імена й пам'ять проєкту — на цьому Mac"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognition in the cloud; voices, names and project memory stay on this Mac"
+          }
+        }
+      }
+    },
+    "Распознавание и голоса — на этом Mac: %@. Движок и модель меняются в настройках.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розпізнавання й голоси — на цьому Mac: %@. Рушій і модель змінюються в налаштуваннях."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recognition and voices run on this Mac: %@. The engine and model are set in settings."
+          }
+        }
+      }
+    },
     "Распознавание подписей": {
       "extractionState": "manual",
       "localizations": {
@@ -9540,6 +9999,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speech recognition"
+          }
+        }
+      }
+    },
+    "Распознавание речи теперь умеет работать в облаке Microsoft Azure. Ключ спросим один раз, перед первой обработкой. Разделение по голосам, имена, память проекта и экспорт в любом случае остаются на этом Mac.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розпізнавання мовлення тепер може працювати у хмарі Microsoft Azure. Ключ запитаємо один раз, перед першою обробкою. Розділення за голосами, імена, пам'ять проєкту й експорт у будь-якому разі залишаються на цьому Mac."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech recognition can now run in the Microsoft Azure cloud. We ask for the key once, before the first run. Speaker separation, names, project memory and export always stay on this Mac."
           }
         }
       }
@@ -9623,6 +10099,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Распознаёт Azure MAI-Transcribe-2: минуты вместо десятков минут, модели распознавания качать не нужно. Аудио встречи уходит в Azure, голоса и имена остаются здесь.": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розпізнає Azure MAI-Transcribe-2: хвилини замість десятків хвилин, моделі розпізнавання завантажувати не треба. Аудіо зустрічі йде в Azure, голоси й імена залишаються тут."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azure MAI-Transcribe-2 does the recognition: minutes instead of tens of minutes, and no recognition models to download. The meeting audio goes to Azure; voices and names stay here."
           }
         }
       }
@@ -12330,6 +12823,23 @@
         }
       }
     },
+    "кусок %lld из %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "фрагмент %lld з %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chunk %lld of %lld"
+          }
+        }
+      }
+    },
     "локальная модель": {
       "extractionState": "manual",
       "localizations": {
@@ -13905,40 +14415,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "language not detected"
-          }
-        }
-      }
-    },
-    "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей.": {
-      "extractionState": "manual",
-      "localizations": {
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Аудіо зустрічі йде в Google за вашим ключем: розпізнає gemini-3.5-transcribe, спікерів так само розмічає локальний діаризатор. На безкоштовному тарифі Google використовує надіслане для покращення своїх моделей."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Meeting audio goes to Google with your key: gemini-3.5-transcribe recognizes the speech, speakers are still labelled by the local diarizer. On the free tier Google uses what is sent to improve its models."
-          }
-        }
-      }
-    },
-    "Аудио встречи уходит в Microsoft Azure по вашему ключу, в регион вашего ресурса Speech: распознаёт MAI-Transcribe-2, спикеров по-прежнему размечает локальный диаризатор. По условиям Azure отправленное аудио не сохраняется.": {
-      "extractionState": "manual",
-      "localizations": {
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Аудіо зустрічі йде в Microsoft Azure за вашим ключем, у регіон вашого ресурсу Speech: розпізнає MAI-Transcribe-2, спікерів так само розмічає локальний діаризатор. За умовами Azure надіслане аудіо не зберігається."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Meeting audio goes to Microsoft Azure with your key, to the region of your Speech resource: MAI-Transcribe-2 recognizes the speech, speakers are still labelled by the local diarizer. Under Azure's terms the audio is not retained."
           }
         }
       }

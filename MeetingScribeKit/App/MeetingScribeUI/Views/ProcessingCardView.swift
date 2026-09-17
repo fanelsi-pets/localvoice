@@ -79,7 +79,7 @@ struct ProcessingCardView: View {
         }
         .accessibilityIdentifier("processing.cancel")
         .accessibilityLabel("Отменить обработку")
-        LocalProcessingBadge()
+        ProcessingPlaceBadge(isCloud: record.engines.asr.isCloud)
       }
     }
   }

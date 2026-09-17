@@ -19,6 +19,9 @@ struct SettingsView: View {
         .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
     }
     .frame(minWidth: 520, minHeight: 380)
+    .sheet(item: model.cloudSetupBinding(for: .settings)) { prompt in
+      CloudSetupSheet(model: model, prompt: prompt)
+    }
   }
 
   /// Разделы: при крупном системном шрифте подпись переносится по строкам, а не обрезается.
@@ -150,23 +153,83 @@ struct EngineSettings: View {
   @Bindable var settings: AppSettings
   @State private var statuses: [ModelStatus] = []
 
-  var availableEngines: [AsrEngineID] { model.availableAsrEngines }
+  var availablePlaces: [ProcessingPlace] {
+    model.cloudEngine == nil ? [.local] : ProcessingPlace.allCases
+  }
+
+  /// Что происходит с аудио при текущем выборе — подпись под переключателем.
+  var placeNote: String {
+    guard settings.processingPlace == .cloud else {
+      return String(
+        localized:
+          "Запись не покидает этот Mac. Модели скачиваются один раз, обработка идёт на Neural Engine и GPU."
+      )
+    }
+    return ImportSheet.cloudNote(for: settings.engines.asr)
+  }
+
+  private var placeBinding: Binding<ProcessingPlace> {
+    Binding(
+      get: { settings.processingPlace },
+      set: { settings.setProcessingPlace($0, cloud: model.cloudEngine ?? .azure) })
+  }
+
+  /// Локальный выбор правится отдельно: в облачном режиме он ждёт возврата «на этот Mac».
+  private var localAsrBinding: Binding<AsrEngineID> {
+    Binding(
+      get: { settings.localEngines.asr },
+      set: { engine in
+        var local = settings.localEngines
+        local.asr = engine
+        settings.setLocalEngines(local)
+      })
+  }
+
+  private var localModelBinding: Binding<ModelID> {
+    Binding(
+      get: { settings.localEngines.whisperModel },
+      set: { model in
+        var local = settings.localEngines
+        local.whisperModel = model
+        settings.setLocalEngines(local)
+      })
+  }
+
+  /// Диаризация одна на оба режима: спикеров размечает этот Mac, что бы ни распознавало речь.
+  private var diarizerBinding: Binding<DiarizerID?> {
+    Binding(
+      get: { settings.engines.diarizer },
+      set: { diarizer in
+        var local = settings.localEngines
+        local.diarizer = diarizer
+        settings.setLocalEngines(local)
+      })
+  }
 
   var body: some View {
     Form {
       Section("Движки") {
-        Picker("Распознавание", selection: $settings.engines.asr) {
-          // Облачный режим — только когда хост дал провайдера с ключом (ADR-010).
-          ForEach(availableEngines, id: \.self) { engine in
+        // Место обработки — главный выбор; облако предлагается только там, где хост дал провайдера (ADR-010).
+        Picker("Распознавание", selection: placeBinding) {
+          ForEach(availablePlaces) { place in
+            Text(place.title).tag(place)
+          }
+        }
+        .accessibilityIdentifier("settings.place")
+        Text(placeNote)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Picker("Движок на этом Mac", selection: localAsrBinding) {
+          ForEach(model.localAsrEngines, id: \.self) { engine in
             Text(engine.title).tag(engine)
           }
         }
-        Picker("Модель Whisper", selection: $settings.engines.whisperModel) {
+        Picker("Модель Whisper", selection: localModelBinding) {
           Text("large-v3 turbo (быстрее)").tag(ModelID.whisperLargeV3Turbo)
           Text("large-v3 (точнее)").tag(ModelID.whisperLargeV3)
         }
-        .disabled(settings.engines.asr != .whisperkit)
-        Picker("Разделение по голосам", selection: $settings.engines.diarizer) {
+        .disabled(settings.localEngines.asr != .whisperkit)
+        Picker("Разделение по голосам", selection: diarizerBinding) {
           Text(DiarizerID.speakerkit.title).tag(DiarizerID?.some(.speakerkit))
           Text(DiarizerID.fluidaudio.title).tag(DiarizerID?.some(.fluidaudio))
           Text("Без диаризации").tag(DiarizerID?.none)

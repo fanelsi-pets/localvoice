@@ -181,6 +181,15 @@ private struct MainWindowSheets: ViewModifier {
       .sheet(isPresented: onboardingBinding) {
         OnboardingSheet(model: model)
       }
+      // Разовый вопрос о месте обработки для тех, кто пользовался приложением до появления облака.
+      .sheet(isPresented: $model.isProcessingPlaceQuestionPresented) {
+        ProcessingPlaceSheet(model: model)
+      }
+      // Ключ облачного провайдера: спрашивается один раз, перед первой облачной обработкой. Показывает
+      // то окно, из которого пришёл запрос, — иначе sheet вылезет за спиной у настроек или онбординга.
+      .sheet(item: model.cloudSetupBinding(for: .library)) { prompt in
+        CloudSetupSheet(model: model, prompt: prompt)
+      }
   }
 
   /// Онбординг живёт в своём контроллере (`let` в модели), поэтому связывание — через замыкания.

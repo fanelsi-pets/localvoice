@@ -148,8 +148,17 @@ struct FailureView: View {
         Text(message)
       }
     } actions: {
-      Button("Повторить обработку", systemImage: "arrow.clockwise") { model.process(record.id) }
-        .accessibilityIdentifier("process.button.content")
+      VStack(spacing: 8) {
+        Button("Повторить обработку", systemImage: "arrow.clockwise") { model.process(record.id) }
+          .accessibilityIdentifier("process.button.content")
+        // Облако отказало (нет ключа, лимит, сеть) — путь на этот Mac не должен упираться в настройки.
+        if record.engines.asr.isCloud {
+          Button("Обработать на этом Mac", systemImage: "lock.laptopcomputer") {
+            model.processLocally(record.id)
+          }
+          .accessibilityIdentifier("process.button.local")
+        }
+      }
     }
   }
 }
@@ -193,6 +202,10 @@ struct FailureBanner: View {
       .foregroundStyle(.red)
       .lineLimit(2)
       Spacer()
+      if record.engines.asr.isCloud {
+        Button("На этом Mac") { model.processLocally(record.id) }
+          .accessibilityIdentifier("process.button.localBanner")
+      }
       Button("Повторить обработку") { model.process(record.id) }
     }
     .font(.callout)

@@ -262,7 +262,10 @@ public actor SelfTestRunner {
             "Спикеров найдено \(speakerCount), ожидалось \(sample.expectedSpeakers) — разделение по голосам на коротком сэмпле бывает неточным; на настоящей встрече проверьте панель «Спикеры»."
         ))
     }
-    for language in sample.expectedLanguages where !languages.contains(language.code) {
+    // Движок без выбора языка (облако, Parakeet) языков не сообщает — «нет речи на языке ru» было бы
+    // выдумкой: в отчёте и так написано «язык не определён».
+    for language in sample.expectedLanguages
+    where !languages.isEmpty && !languages.contains(language.code) {
       problems.append(
         String(
           localized:

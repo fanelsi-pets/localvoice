@@ -5,12 +5,31 @@ import LocalLLM
 import Observation
 import Voices
 
+/// Где обрабатывается встреча: в облаке провайдера, которого дал хост, или на этом Mac.
+nonisolated public enum ProcessingPlace: String, CaseIterable, Hashable, Sendable, Identifiable {
+  case cloud
+  case local
+
+  public var id: String { rawValue }
+
+  public var title: String {
+    switch self {
+    case .cloud: String(localized: "В облаке")
+    case .local: String(localized: "На этом Mac")
+    }
+  }
+}
+
 /// Настройки приложения (UserDefaults) и параметры запуска. Ключи стабильны: UI-тест передаёт их
 /// launch-аргументами `-Ключ значение` (домен аргументов UserDefaults) и переменными окружения.
 @Observable
 public final class AppSettings {
   public enum Key {
     public static let engines = "engines"
+    /// Последний выбор локального движка: переключение «в облако и обратно» его не теряет.
+    public static let localEngines = "localEngines"
+    /// Пользователь уже отвечал, где обрабатывать встречи (онбординг или разовый вопрос после обновления).
+    public static let cloudDefaultAnswered = "cloudDefaultAnswered"
     public static let defaultExpectedSpeakers = "defaultExpectedSpeakers"
     public static let defaultLanguage = "defaultLanguage"
     public static let tenthsInTimecodes = "tenthsInTimecodes"
@@ -61,6 +80,40 @@ public final class AppSettings {
   }
   public var engines: EngineSelection {
     didSet { store(engines, forKey: Key.engines) }
+  }
+  /// Движки для обработки «на этом Mac»: помнятся отдельно, чтобы возврат из облака вернул именно их.
+  public var localEngines: EngineSelection {
+    didSet { store(localEngines, forKey: Key.localEngines) }
+  }
+  /// Вопрос «где обрабатывать встречи» уже задан — второй раз не спрашиваем.
+  public var cloudDefaultAnswered: Bool {
+    didSet { defaults.set(cloudDefaultAnswered, forKey: Key.cloudDefaultAnswered) }
+  }
+
+  /// Где идёт распознавание сейчас: облако — это `engines.asr.isCloud`.
+  public var processingPlace: ProcessingPlace { engines.asr.isCloud ? .cloud : .local }
+
+  /// Переключение места обработки. Облако берёт диаризатор и модель из локального выбора: диаризация
+  /// всё равно идёт на этом Mac, а модель понадобится при возврате.
+  public func setProcessingPlace(_ place: ProcessingPlace, cloud: AsrEngineID) {
+    switch place {
+    case .cloud:
+      engines = EngineSelection(
+        asr: cloud, whisperModel: localEngines.whisperModel, diarizer: localEngines.diarizer)
+    case .local:
+      engines = localEngines
+    }
+  }
+
+  /// Правка локального выбора: она же становится текущей, если сейчас работаем не в облаке.
+  public func setLocalEngines(_ selection: EngineSelection) {
+    localEngines = selection
+    if engines.asr.isCloud {
+      engines.whisperModel = selection.whisperModel
+      engines.diarizer = selection.diarizer
+    } else {
+      engines = selection
+    }
   }
   /// Ожидаемое число участников по умолчанию; `nil` — не подсказывать диаризатору.
   public var defaultExpectedSpeakers: Int? {
@@ -184,7 +237,15 @@ public final class AppSettings {
     let defaults = defaults ?? Self.makeDefaults(environment: environment)
     self.defaults = defaults
     self.defaultEngines = defaultEngines
-    engines = Self.load(EngineSelection.self, forKey: Key.engines, from: defaults) ?? defaultEngines
+    let storedEngines = Self.load(EngineSelection.self, forKey: Key.engines, from: defaults)
+    engines = storedEngines ?? defaultEngines
+    // Локальный выбор: сохранённый; иначе прежние настройки, если они были локальными; иначе умолчание
+    // хоста, когда оно локальное, и `.accurate` (WhisperKit turbo + SpeakerKit) для облачного умолчания.
+    localEngines =
+      Self.load(EngineSelection.self, forKey: Key.localEngines, from: defaults)
+      ?? storedEngines.flatMap { $0.asr.isCloud ? nil : $0 }
+      ?? (defaultEngines.asr.isCloud ? .accurate : defaultEngines)
+    cloudDefaultAnswered = defaults.bool(forKey: Key.cloudDefaultAnswered)
     // В домене аргументов запуска (`-defaultExpectedSpeakers 6`) значение — строка: `integer(forKey:)` её разбирает.
     defaultExpectedSpeakers =
       defaults.object(forKey: Key.defaultExpectedSpeakers) == nil

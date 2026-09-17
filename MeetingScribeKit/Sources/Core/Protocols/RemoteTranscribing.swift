@@ -30,9 +30,29 @@ public struct RemoteTranscriberAvailability: Hashable, Sendable {
   public static let available = RemoteTranscriberAvailability(isAvailable: true)
 }
 
+/// Экран настройки облачного провайдера: что показать, когда ключа ещё нет. Тексты даёт хост (ADR-010) —
+/// ядро не знает ни про Azure, ни про то, как проверяется ключ, и только рисует поле и передаёт введённое.
+public struct RemoteSetupRequest: Hashable, Sendable {
+  /// Заголовок окна: «Ключ Azure для встреч».
+  public var title: String
+  /// Зачем это нужно и куда уедет аудио — два-три предложения.
+  public var explanation: String
+  /// Подпись поля ввода.
+  public var fieldTitle: String
+  /// Что будет с введённым значением и где его взять.
+  public var footnote: String?
+
+  public init(title: String, explanation: String, fieldTitle: String, footnote: String? = nil) {
+    self.title = title
+    self.explanation = explanation
+    self.fieldTitle = fieldTitle
+    self.footnote = footnote
+  }
+}
+
 /// Облачное распознавание силами приложения-хоста (ADR-010, как `FollowupGenerating`): ключ, протокол и сеть
 /// живут в хосте, ядро только режет запись на куски и просит распознать файл. Реализация в LocalVoice —
-/// Gemini 3.5 Transcribe (`GeminiMeetingTranscriber`).
+/// Microsoft MAI-Transcribe-2 в Azure (`AzureMeetingTranscriber`).
 public protocol RemoteTranscribing: Sendable {
   /// Название для карточки встречи и настроек: «Gemini 3.5 Transcribe».
   var title: String { get }
@@ -45,11 +65,28 @@ public protocol RemoteTranscribing: Sendable {
   /// Есть ли ключ и можно ли слать запросы. Ядро зовёт это в `prepare`, до первого куска.
   func availability() async -> RemoteTranscriberAvailability
 
+  /// Чего не хватает провайдеру, чтобы работать: `nil` — всё на месте. Ядро зовёт это перед постановкой
+  /// облачной встречи в очередь и показывает экран ввода вместо непонятной ошибки на середине обработки.
+  func setupRequest() async -> RemoteSetupRequest?
+
+  /// Введённое на этом экране значение (ключ): провайдер проверяет его у себя и сохраняет сам.
+  /// Возвращает текст ошибки для показа рядом с полем или `nil`, если значение принято.
+  func completeSetup(value: String) async -> String?
+
   /// Распознаёт один файл (ядро держит его длительность в пределах `maximumClipSeconds`) и возвращает слова
   /// с таймкодами от его начала. `language` — `nil`: язык определяет сам провайдер (смешанная речь встречи).
   /// `duration` — длительность куска в секундах: провайдеру она нужна, если таймкодов в ответе не оказалось.
   func transcribe(clip url: URL, mimeType: String, duration: Double, language: Language?)
     async throws -> [RemoteWord]
+}
+
+extension RemoteTranscribing {
+  /// Провайдер, которому нечего спрашивать (ключ уже есть или не нужен).
+  public func setupRequest() async -> RemoteSetupRequest? { nil }
+
+  public func completeSetup(value: String) async -> String? {
+    String(localized: "\(title): настройка не требуется")
+  }
 }
 
 /// Ошибка провайдера в терминах, понятных ядру: текст показываем как есть (это ответ сервиса), а

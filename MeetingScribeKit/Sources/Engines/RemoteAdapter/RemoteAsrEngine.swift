@@ -24,6 +24,10 @@ public actor RemoteAsrEngine: AsrEngine {
   static let segmentGapSeconds: Double = 0.7
   /// Предел длины сегмента: длинные куски неудобны в интерфейсе и при сшивке со спикерами.
   static let maxSegmentSeconds: Double = 30
+  /// Сколько кусков едут в облако одновременно. У провайдера запас по запросам большой (у Azure — сотни
+  /// в минуту), а канал выгрузки у пользователя один: три потока заметно сокращают ожидание и не занимают
+  /// его целиком.
+  static let concurrentRequests = 3
   /// Сколько раз повторять запрос, который провайдер отклонил временно (429, 5xx, таймаут).
   static let attempts = 3
   static let retryDelays: [Duration] = [.seconds(5), .seconds(20)]
@@ -78,49 +82,96 @@ public actor RemoteAsrEngine: AsrEngine {
     let directory = workRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
     defer { try? FileManager.default.removeItem(at: directory) }
 
+    var pending: [Int: [RemoteWord]] = [:]
     var collected: [Segment] = []
     var processed: Double = 0
-    for (index, chunk) in chunks.enumerated() {
-      try Self.checkCancellation()
-      let place = String(localized: "кусок \(index + 1) из \(chunks.count)")
-      progress?(
-        .audio(
-          .transcription, processed: processed, total: total,
-          timecode: options.timeOffset + chunk.start,
-          pulse: String(localized: "\(place): отправка")))
+    var timecode = options.timeOffset + chunks[0].start
+    var nextToEmit = 0
 
-      let clip = try RemoteAudioClip.write(
-        audio.slice(from: chunk.start, to: chunk.end), into: directory, name: "clip-\(index)")
-      defer { try? FileManager.default.removeItem(at: clip.url) }
+    progress?(
+      .audio(
+        .transcription, processed: 0, total: total, timecode: timecode,
+        pulse: String(localized: "\(Self.place(0, of: chunks.count)): отправка")))
 
-      let words = try await request(
-        clip: clip, duration: chunk.duration, language: options.language, place: place,
-        processed: processed, total: total, timecode: options.timeOffset + chunk.start,
-        progress: progress)
-      let segments = Self.segments(
-        from: words, offset: options.timeOffset + chunk.start, language: options.language)
-      // Журнал без текста (SPEC.md §3.8): по нему после прогона видно, не пропал ли кусок целиком.
-      AppLog.pipeline.info(
-        "remote asr chunk \(index + 1, privacy: .public)/\(chunks.count, privacy: .public): \(chunk.duration, privacy: .public) s → \(words.count, privacy: .public) words"
-      )
-      if !segments.isEmpty { discovered?(segments) }
-      collected.append(contentsOf: segments)
-
-      processed += chunk.duration
-      progress?(
-        .audio(
-          .transcription, processed: processed, total: total,
-          timecode: options.timeOffset + chunk.end,
-          pulse: segments.last?.text ?? String(localized: "\(place): без речи")))
+    // Куски уезжают пачками по `concurrentRequests`: ждать ответа по одному — значит держать канал
+    // простаивающим большую часть времени. Лента реплик всё равно идёт по порядку.
+    try await withThrowingTaskGroup(of: (Int, [RemoteWord]).self) { group in
+      var scheduled = 0
+      while scheduled < min(Self.concurrentRequests, chunks.count) {
+        group.addTask(
+          operation: self.operation(
+            index: scheduled, chunk: chunks[scheduled], audio: audio, options: options,
+            directory: directory, count: chunks.count, progress: progress))
+        scheduled += 1
+      }
+      while let (index, words) = try await group.next() {
+        try Self.checkCancellation()
+        pending[index] = words
+        processed += chunks[index].duration
+        timecode = max(timecode, options.timeOffset + chunks[index].end)
+        // Журнал без текста (SPEC.md §3.8): по нему после прогона видно, не пропал ли кусок целиком.
+        AppLog.pipeline.info(
+          "remote asr chunk \(index + 1, privacy: .public)/\(chunks.count, privacy: .public): \(chunks[index].duration, privacy: .public) s → \(words.count, privacy: .public) words"
+        )
+        var pulse = String(localized: "\(Self.place(index, of: chunks.count)): готов")
+        // Сегменты отдаются в ленту по порядку: кусок ждёт, пока готовы все предыдущие.
+        while let ready = pending[nextToEmit] {
+          let segments = Self.segments(
+            from: ready, offset: options.timeOffset + chunks[nextToEmit].start,
+            language: options.language)
+          if !segments.isEmpty {
+            discovered?(segments)
+            pulse = segments.last?.text ?? pulse
+          }
+          collected.append(contentsOf: segments)
+          pending[nextToEmit] = nil
+          nextToEmit += 1
+        }
+        progress?(
+          .audio(
+            .transcription, processed: processed, total: total, timecode: timecode, pulse: pulse))
+        if scheduled < chunks.count {
+          group.addTask(
+            operation: self.operation(
+              index: scheduled, chunk: chunks[scheduled], audio: audio, options: options,
+              directory: directory, count: chunks.count, progress: progress))
+          scheduled += 1
+        }
+      }
     }
     return collected.sorted { ($0.start, $0.end) < ($1.start, $1.end) }
   }
 
+  /// Один кусок: запись во временный файл и запрос с повторами. Замыкание отдаётся группе задач, поэтому
+  /// нарезка делается заранее — в задачу уезжает только готовый кусок аудио.
+  private func operation(
+    index: Int, chunk: RemoteChunkPlanner.Chunk, audio: PCMAudio, options: AsrOptions,
+    directory: URL, count: Int, progress: ProgressSink?
+  ) -> @Sendable () async throws -> (Int, [RemoteWord]) {
+    let slice = audio.slice(from: chunk.start, to: chunk.end)
+    let place = Self.place(index, of: count)
+    return { [self] in
+      try Self.checkCancellation()
+      let clip = try RemoteAudioClip.write(slice, into: directory, name: "clip-\(index)")
+      defer { try? FileManager.default.removeItem(at: clip.url) }
+      let words = try await request(
+        clip: clip, duration: chunk.duration, language: options.language, place: place,
+        progress: progress)
+      return (index, words)
+    }
+  }
+
+  /// «кусок 2 из 5» — для пульса и журнала.
+  static func place(_ index: Int, of count: Int) -> String {
+    String(localized: "кусок \(index + 1) из \(count)")
+  }
+
   /// Запрос с повторами: временную ошибку провайдера (429, 5xx, таймаут) ждём и повторяем, остальные —
-  /// наружу текстом самого провайдера, чтобы в интерфейсе было видно, что именно ответил Google.
+  /// наружу текстом самого провайдера, чтобы в интерфейсе было видно, что именно он ответил. Повтор
+  /// сообщается пульсом без секунд: куски идут параллельно, и полосу двигает только их завершение.
   private func request(
     clip: RemoteAudioClip.Written, duration: Double, language: Language?, place: String,
-    processed: Double, total: Double, timecode: Double, progress: ProgressSink?
+    progress: ProgressSink?
   ) async throws -> [RemoteWord] {
     var attempt = 0
     while true {
@@ -135,11 +186,10 @@ public actor RemoteAsrEngine: AsrEngine {
         }
         let delay = Self.retryDelays[min(attempt, Self.retryDelays.count - 1)]
         progress?(
-          .audio(
-            .transcription, processed: processed, total: total, timecode: timecode,
+          ProgressEvent(
+            stage: .transcription,
             pulse: String(
-              localized: "\(place): повтор после ответа «\(error.localizedDescription)»")
-          ))
+              localized: "\(place): повтор после ответа «\(error.localizedDescription)»")))
         do { try await Task.sleep(for: delay) } catch { throw EngineError.cancelled }
         attempt += 1
       }

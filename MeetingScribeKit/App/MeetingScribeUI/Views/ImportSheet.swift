@@ -82,29 +82,20 @@ struct ImportSheet: View {
             }
           }
           .accessibilityIdentifier("import.language")
-          Picker("Режим", selection: modeBinding) {
-            Text("Точный (WhisperKit)").tag(AsrEngineID.whisperkit)
-            Text("Быстрый (Parakeet)").tag(AsrEngineID.parakeet)
-            // Облачные режимы — только те, для которых хост дал провайдера с ключом (ADR-010).
-            ForEach(model.availableAsrEngines.filter(\.isCloud), id: \.self) { engine in
-              Text(engine.title).tag(engine)
+          Picker("Обработка", selection: placeBinding) {
+            ForEach(availablePlaces) { place in
+              Text(place.title).tag(place)
             }
           }
           .accessibilityIdentifier("import.mode")
-          if draft.engines.asr.isCloud {
-            Text(Self.cloudNote(for: draft.engines.asr))
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          } else {
-            Text("Модель WhisperKit и диаризатор выбираются в настройках: \(draft.engines.title).")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
+          Text(placeNote)
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
       }
       .formStyle(.grouped)
       HStack {
-        LocalProcessingBadge()
+        ProcessingPlaceBadge(isCloud: draft.engines.asr.isCloud)
         Spacer()
         Button("Отмена", role: .cancel) { model.pendingImport = nil }
           .keyboardShortcut(.cancelAction)
@@ -152,14 +143,33 @@ struct ImportSheet: View {
       + String(localized: ". Диаризация не нужна, имена подставятся автоматически.")
   }
 
-  private var modeBinding: Binding<AsrEngineID> {
+  /// Облако предлагается только там, где хост дал провайдера (ADR-010): в самостоятельном ядре его нет.
+  private var availablePlaces: [ProcessingPlace] {
+    model.cloudEngine == nil ? [.local] : ProcessingPlace.allCases
+  }
+
+  private var placeBinding: Binding<ProcessingPlace> {
     Binding(
-      get: { draft.engines.asr },
-      set: { asr in
-        draft.engines.asr = asr
+      get: { draft.engines.asr.isCloud ? .cloud : .local },
+      set: { place in
+        switch place {
+        case .cloud:
+          guard let cloud = model.cloudEngine else { return }
+          draft.engines.asr = cloud
+        case .local:
+          draft.engines = model.settings.localEngines
+        }
         // Ни Parakeet, ни облако не принимают язык на вход: он определяется по самой речи.
-        if asr != .whisperkit { draft.language = .auto }
+        if draft.engines.asr != .whisperkit { draft.language = .auto }
       })
+  }
+
+  private var placeNote: String {
+    guard !draft.engines.asr.isCloud else { return Self.cloudNote(for: draft.engines.asr) }
+    return String(
+      localized:
+        "Распознавание и голоса — на этом Mac: \(draft.engines.title). Движок и модель меняются в настройках."
+    )
   }
 
   private func confirm() {
@@ -170,18 +180,18 @@ struct ImportSheet: View {
 }
 
 extension ImportSheet {
-  /// Куда уходит аудио в облачном режиме — подпись под выбором режима.
+  /// Куда уходит аудио в облачном режиме — подпись под выбором места обработки.
   static func cloudNote(for engine: AsrEngineID) -> String {
     switch engine {
-    case .gemini:
-      String(
-        localized:
-          "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей."
-      )
     case .azure:
       String(
         localized:
-          "Аудио встречи уходит в Microsoft Azure по вашему ключу, в регион вашего ресурса Speech: распознаёт MAI-Transcribe-2, спикеров по-прежнему размечает локальный диаризатор. По условиям Azure отправленное аудио не сохраняется."
+          "Аудио встречи уходит в Microsoft Azure по вашему ключу: распознаёт MAI-Transcribe-2, по условиям Azure отправленное аудио не сохраняется. Голоса, имена и память проекта остаются на этом Mac."
+      )
+    case .gemini:
+      String(
+        localized:
+          "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe. Голоса и имена остаются на этом Mac."
       )
     case .whisperkit, .parakeet: ""
     }

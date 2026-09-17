@@ -121,6 +121,12 @@ struct AzureSpeechClientTests {
         #expect(AzureMeetingTranscriber.mapped(CancellationError()) is CancellationError)
     }
 
+    @Test("An empty key is rejected before any request leaves the app")
+    func emptyKeyIsRejected() async {
+        let error = await MeetingCloudCredentials.verifyAndSave(key: "   ", region: nil)
+        #expect(error != nil)
+    }
+
     @Test("Region: portal spelling is normalized, empty falls back to the default")
     func region() {
         #expect(AzureSpeechSettings.normalized("North Europe") == "northeurope")
