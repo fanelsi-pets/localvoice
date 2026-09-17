@@ -33,7 +33,9 @@ final class MeetingsHost {
         model = MeetingScribeUI.AppModel.live(
             libraryDirectory: dataDirectory,
             modelsRoot: dataDirectory.appendingPathComponent("Models", isDirectory: true),
-            defaultEngines: Self.defaultEngines
+            defaultEngines: Self.defaultEngines,
+            // Облачный режим «Gemini 3.5 Transcribe» в диалоге импорта: ключ и сеть — на стороне хоста.
+            remoteTranscriber: GeminiMeetingTranscriber()
         )
         model.windowTitle = String(localized: "Meetings")
         // One-time: builds before this default stored turbo through onboarding; move WhisperKit users to

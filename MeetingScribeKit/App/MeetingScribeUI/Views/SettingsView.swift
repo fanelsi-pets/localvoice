@@ -150,11 +150,16 @@ struct EngineSettings: View {
   @Bindable var settings: AppSettings
   @State private var statuses: [ModelStatus] = []
 
+  var availableEngines: [AsrEngineID] {
+    AsrEngineID.allCases.filter { !$0.isCloud || model.remoteTranscriber != nil }
+  }
+
   var body: some View {
     Form {
       Section("Движки") {
         Picker("Распознавание", selection: $settings.engines.asr) {
-          ForEach(AsrEngineID.allCases, id: \.self) { engine in
+          // Облачный режим — только когда хост дал провайдера с ключом (ADR-010).
+          ForEach(availableEngines, id: \.self) { engine in
             Text(engine.title).tag(engine)
           }
         }

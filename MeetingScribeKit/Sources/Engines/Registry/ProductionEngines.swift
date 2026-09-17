@@ -13,12 +13,19 @@ public actor ProductionEngines: EngineProviding {
   }
 
   private let modelStore: ModelStore
+  /// Облачный провайдер хоста (LocalVoice — Gemini 3.5 Transcribe); `nil` — режим `.gemini` недоступен.
+  private let remote: (any RemoteTranscribing)?
   private let verbose: Bool
   private var asrCache: [AsrKey: any AsrEngine] = [:]
   private var diarizerCache: [DiarizerID: any Diarizer] = [:]
 
-  public init(modelStore: ModelStore = .standard(), verbose: Bool = false) {
+  public init(
+    modelStore: ModelStore = .standard(),
+    remote: (any RemoteTranscribing)? = nil,
+    verbose: Bool = false
+  ) {
     self.modelStore = modelStore
+    self.remote = remote
     self.verbose = verbose
   }
 
@@ -30,8 +37,9 @@ public actor ProductionEngines: EngineProviding {
     let key = AsrKey(id: selection.asr, model: selection.whisperModel)
     if let cached = asrCache[key] { return cached }
     asrCache.removeAll()
-    let engine = EngineFactory.makeAsr(
-      selection.asr, model: selection.whisperModel, modelStore: modelStore, verbose: verbose)
+    let engine = try EngineFactory.makeAsr(
+      selection.asr, model: selection.whisperModel, modelStore: modelStore, remote: remote,
+      verbose: verbose)
     asrCache[key] = engine
     return engine
   }

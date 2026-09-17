@@ -211,6 +211,9 @@ public final class AppModel {
   public let settings: AppSettings
   public let store: LibraryStore
   public let engines: any EngineProviding
+  /// Облачное распознавание от хоста (ADR-010, LocalVoice — Gemini 3.5 Transcribe); `nil` — режим
+  /// `.gemini` в интерфейсе не показывается.
+  public let remoteTranscriber: (any RemoteTranscribing)?
   /// Хранилище моделей: пути только через него (CLAUDE.md).
   public let modelStore: ModelStore
   /// Загрузчик моделей: боевой `ModelDownloader` или сценарный для UI-тестов.
@@ -365,12 +368,14 @@ public final class AppModel {
     engines: any EngineProviding,
     modelStore: ModelStore = .standard(),
     downloader: (any ModelDownloading)? = nil,
+    remoteTranscriber: (any RemoteTranscribing)? = nil,
     updater: (any UpdaterProviding)? = nil
   ) {
     self.updater = updater ?? NoUpdater()
     self.settings = settings
     self.store = store
     self.engines = engines
+    self.remoteTranscriber = remoteTranscriber
     self.modelStore = modelStore
     self.downloader = downloader ?? ScriptedModelDownloader(store: modelStore)
     self.onboarding = OnboardingController(settings: settings, modelStore: modelStore)
@@ -420,20 +425,23 @@ public final class AppModel {
     libraryDirectory: URL? = nil,
     modelsRoot: URL? = nil,
     defaultEngines: EngineSelection = .accurate,
+    remoteTranscriber: (any RemoteTranscribing)? = nil,
     updater: ((AppSettings) -> any UpdaterProviding)? = nil
   ) -> AppModel {
     let settings = AppSettings(defaultEngines: defaultEngines)
     let store = LibraryStore(directory: libraryDirectory ?? LibraryStore.standardDirectory())
     let modelStore = modelsRoot.map(ModelStore.init(root:)) ?? ModelStore.standard()
     let engines: any EngineProviding =
-      settings.useFakeEngines ? ScriptedEngines() : ProductionEngines(modelStore: modelStore)
+      settings.useFakeEngines
+      ? ScriptedEngines()
+      : ProductionEngines(modelStore: modelStore, remote: remoteTranscriber)
     let downloader: any ModelDownloading =
       settings.useFakeEngines
       ? ScriptedModelDownloader(store: modelStore)
       : ModelDownloader(store: modelStore, downloaderVersion: MeetingScribeUIInfo.version)
     return AppModel(
       settings: settings, store: store, engines: engines, modelStore: modelStore,
-      downloader: downloader, updater: updater?(settings))
+      downloader: downloader, remoteTranscriber: remoteTranscriber, updater: updater?(settings))
   }
 
   /// Загрузка библиотеки при старте (активные статусы уже демотированы в `interrupted` хранилищем).

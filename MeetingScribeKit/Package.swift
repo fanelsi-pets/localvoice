@@ -58,12 +58,19 @@ let package = Package(
       dependencies: ["Core", .product(name: "FluidAudio", package: "FluidAudio")],
       path: "Sources/Engines/FluidAudioAdapter"
     ),
+    // Cloud transcription through a provider supplied by the host app (`RemoteTranscribing`): no network
+    // and no keys here, only chunking, clip files and mapping words to segments.
+    .target(
+      name: "RemoteAdapter",
+      dependencies: ["Core"],
+      path: "Sources/Engines/RemoteAdapter"
+    ),
     // Registry: the only place that knows every adapter, plus the engine providers for the app.
     .target(
       name: "Engines",
       dependencies: [
         "Core", "Ingest", "WhisperKitAdapter", "SpeakerKitAdapter", "ParakeetAdapter",
-        "FluidAudioAdapter",
+        "FluidAudioAdapter", "RemoteAdapter",
       ],
       path: "Sources/Engines/Registry"
     ),
@@ -106,7 +113,7 @@ let package = Package(
     .testTarget(
       name: "EngineTests",
       dependencies: [
-        "Core", "WhisperKitAdapter",
+        "Core", "WhisperKitAdapter", "RemoteAdapter",
         .product(name: "WhisperKit", package: "argmax-oss-swift"),
       ],
       path: "Tests/EngineTests"

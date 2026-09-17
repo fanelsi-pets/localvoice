@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import Testing
 
@@ -64,5 +65,73 @@ struct GeminiTranscribeClientTests {
         let file = try GeminiTranscribeClient.uploadedFile(from: Data(json.utf8))
         #expect(file == GeminiTranscribeClient.UploadedFile(name: "files/abc123", uri: "https://generativelanguage.googleapis.com/v1beta/files/abc123", state: "PROCESSING"))
         #expect(throws: CloudTranscriptionError.self) { try GeminiTranscribeClient.uploadedFile(from: Data("{}".utf8)) }
+    }
+
+    // MARK: - Режим встреч: слова с таймкодами
+
+    @Test("Meeting mode: verbatim mode object with word timestamps, vocabulary dropped")
+    func timedInteractionBody() throws {
+        let body = GeminiTranscribeClient.interactionBody(
+            model: "gemini-3.5-transcribe", uri: "https://files/clip", mimeType: "audio/flac", language: nil,
+            vocabulary: ["LocalVoice"], wordTimestamps: true)
+        let config = try #require((body["generation_config"] as? [String: Any])?["transcription_config"] as? [String: Any])
+        let mode = try #require(config["mode"] as? [String: Any])
+        #expect(mode["type"] as? String == "verbatim")
+        #expect((mode["timestamp_granularities"] as? [String]) == ["word"])
+        // Словарь несовместим со словными таймкодами — API отклонил бы запрос.
+        #expect(config["custom_vocabulary"] == nil)
+        #expect((config["language_codes"] as? [String])?.isEmpty == true)
+    }
+
+    @Test("Word annotations are parsed with speakers and second offsets, sorted by time")
+    func timedWords() throws {
+        let json = """
+        {"status":"completed","output_text":"Привет світ","steps":[{"type":"model_output","content":[{"type":"text","text":"Привет світ","annotations":[
+        {"type":"word_info","text":"світ","speaker":"spk_2","start_offset":"0.500s","end_offset":"0.850s"},
+        {"type":"word_info","text":"Привет","speaker":"spk_1","start_offset":"0.100s","end_offset":"0.450s"},
+        {"type":"other","text":"ignored"}]}]}]}
+        """
+        let words = try GeminiTranscribeClient.words(from: Data(json.utf8), clipDuration: 900)
+        #expect(words.count == 2)
+        #expect(words[0] == GeminiTranscribeClient.TimedWord(text: "Привет", start: 0.1, end: 0.45, speaker: "spk_1"))
+        #expect(words[1].text == "світ")
+        #expect(words[1].speaker == "spk_2")
+    }
+
+    @Test("Without annotations the chunk text is spread over the clip instead of being lost")
+    func timedWordsFallback() throws {
+        let json = #"{"status":"completed","output_text":"одне два три чотири","steps":[]}"#
+        let words = try GeminiTranscribeClient.words(from: Data(json.utf8), clipDuration: 8)
+        #expect(words.count == 4)
+        #expect(words.first?.text == "одне")
+        #expect(words.first?.start == 0)
+        #expect(words.last?.end == 8)
+        #expect(words.allSatisfy { $0.speaker == nil })
+
+        let error = #"{"error":{"code":429,"message":"quota"}}"#
+        #expect(throws: CloudTranscriptionError.self) {
+            try GeminiTranscribeClient.words(from: Data(error.utf8), clipDuration: 8)
+        }
+    }
+
+    @Test("Offsets come as protobuf durations")
+    func offsets() {
+        #expect(GeminiTranscribeClient.offsetSeconds("0.450s") == 0.45)
+        #expect(GeminiTranscribeClient.offsetSeconds("12s") == 12)
+        #expect(GeminiTranscribeClient.offsetSeconds(1.5) == 1.5)
+        #expect(GeminiTranscribeClient.offsetSeconds("nonsense") == nil)
+        #expect(GeminiTranscribeClient.offsetSeconds(nil) == nil)
+    }
+
+    @Test("Provider failures: 429 and 5xx are retryable, a missing model is not")
+    func retryClassification() {
+        let overloaded = GeminiMeetingTranscriber.mapped(
+            CloudTranscriptionError.apiRequestFailed(statusCode: 429, message: "quota"))
+        #expect((overloaded as? RemoteTranscriptionError)?.isRetryable == true)
+        let missing = GeminiMeetingTranscriber.mapped(
+            CloudTranscriptionError.apiRequestFailed(statusCode: 404, message: "not found"))
+        #expect((missing as? RemoteTranscriptionError)?.isRetryable == false)
+        let network = GeminiMeetingTranscriber.mapped(CloudTranscriptionError.networkError(URLError(.timedOut)))
+        #expect((network as? RemoteTranscriptionError)?.isRetryable == true)
     }
 }

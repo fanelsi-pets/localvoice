@@ -2,7 +2,9 @@
 
 This folder is the MeetingScribe core — the Swift package behind the **Meetings** feature of Local Voice:
 streaming decode of Zoom recordings, speaker diarization (SpeakerKit / FluidAudio), speech recognition with a
-language per speaker (WhisperKit / Parakeet), speaker names and voice profiles, the meeting library with
+language per speaker (WhisperKit / Parakeet, or a cloud provider the host supplies through
+`RemoteTranscribing` — Local Voice passes Gemini 3.5 Transcribe), speaker names and voice profiles (always
+local, whatever recognizes the speech), the meeting library with
 full-text search, project memory and follow-up import, Markdown/SRT/JSON export, model downloads with
 checksums, and the SwiftUI interface that Local Voice shows in its Meetings window.
 

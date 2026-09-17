@@ -4,13 +4,20 @@ import Foundation
 public enum AsrEngineID: String, CaseIterable, Codable, Sendable, Hashable {
   case whisperkit
   case parakeet
+  /// Облачный Gemini 3.5 Transcribe через провайдера хоста (`RemoteTranscribing`): аудио уходит в Google.
+  case gemini
 
   public var title: String {
     switch self {
     case .whisperkit: "WhisperKit (Whisper large-v3)"
     case .parakeet: "Parakeet TDT v3 (FluidAudio)"
+    case .gemini: "Gemini 3.5 Transcribe (облако)"
     }
   }
+
+  /// Уходит ли аудио за пределы машины: для предупреждения в интерфейсе и для отключения приёмов,
+  /// рассчитанных на локальный движок (второй проход по пустым окнам).
+  public var isCloud: Bool { self == .gemini }
 }
 
 public enum DiarizerID: String, CaseIterable, Codable, Sendable, Hashable {
@@ -55,6 +62,8 @@ public struct EngineSelection: Hashable, Codable, Sendable {
     switch asr {
     case .parakeet: 0.006
     case .whisperkit: whisperModel == .whisperLargeV3 ? 0.12 : 0.05
+    // Облако: загрузка куска плюс распознавание на стороне Google — оценка для плана прогресса.
+    case .gemini: 0.08
     }
   }
 
@@ -65,6 +74,7 @@ public struct EngineSelection: Hashable, Codable, Sendable {
       case .whisperkit:
         whisperModel == .whisperLargeV3 ? "WhisperKit large-v3" : "WhisperKit large-v3 turbo"
       case .parakeet: "Parakeet TDT v3"
+      case .gemini: "Gemini 3.5 Transcribe"
       }
     let diarizerTitle: String? =
       switch diarizer {

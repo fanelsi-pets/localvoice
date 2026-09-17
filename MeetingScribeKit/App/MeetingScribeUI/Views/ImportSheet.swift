@@ -85,11 +85,23 @@ struct ImportSheet: View {
           Picker("Режим", selection: modeBinding) {
             Text("Точный (WhisperKit)").tag(AsrEngineID.whisperkit)
             Text("Быстрый (Parakeet)").tag(AsrEngineID.parakeet)
+            // Облачный режим — только когда хост дал провайдера с ключом (ADR-010).
+            if model.remoteTranscriber != nil {
+              Text("Gemini 3.5 Transcribe (облако)").tag(AsrEngineID.gemini)
+            }
           }
           .accessibilityIdentifier("import.mode")
-          Text("Модель WhisperKit и диаризатор выбираются в настройках: \(draft.engines.title).")
+          if draft.engines.asr.isCloud {
+            Text(
+              "Аудио встречи уходит в Google по вашему ключу: распознаёт gemini-3.5-transcribe, спикеров по-прежнему размечает локальный диаризатор. На бесплатном тире Google использует отправленное для улучшения своих моделей."
+            )
             .font(.caption)
             .foregroundStyle(.secondary)
+          } else {
+            Text("Модель WhisperKit и диаризатор выбираются в настройках: \(draft.engines.title).")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
         }
       }
       .formStyle(.grouped)
@@ -147,7 +159,8 @@ struct ImportSheet: View {
       get: { draft.engines.asr },
       set: { asr in
         draft.engines.asr = asr
-        if asr == .parakeet { draft.language = .auto }
+        // Ни Parakeet, ни облако не принимают язык на вход: он определяется по самой речи.
+        if asr != .whisperkit { draft.language = .auto }
       })
   }
 

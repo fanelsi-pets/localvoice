@@ -65,15 +65,23 @@ enum GeminiTranscribeClient {
         return regions[code.lowercased()] ?? code
     }
 
+    /// `wordTimestamps` — режим встреч: `mode` становится объектом verbatim со словными таймкодами.
+    /// Словарь с ними несовместим («the API rejects requests that specify custom_vocabulary alongside
+    /// either feature»), поэтому в этом режиме он не отправляется.
     static func interactionBody(
-        model: String, uri: String, mimeType: String, language: String?, vocabulary: [String]
+        model: String, uri: String, mimeType: String, language: String?, vocabulary: [String],
+        wordTimestamps: Bool = false
     ) -> [String: Any] {
         var config: [String: Any] = [
-            "language_codes": language.map { [languageCode($0)] } ?? [],
-            "mode": "smart",
+            "language_codes": language.map { [languageCode($0)] } ?? []
         ]
-        let terms = vocabulary.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        if !terms.isEmpty { config["custom_vocabulary"] = Array(terms.prefix(1000)) }
+        if wordTimestamps {
+            config["mode"] = ["type": "verbatim", "timestamp_granularities": ["word"]]
+        } else {
+            config["mode"] = "smart"
+            let terms = vocabulary.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            if !terms.isEmpty { config["custom_vocabulary"] = Array(terms.prefix(1000)) }
+        }
         return [
             "model": model,
             "input": [["type": "audio", "uri": uri, "mime_type": mimeType]],
@@ -173,9 +181,14 @@ enum GeminiTranscribeClient {
         return try uploadedFile(from: fileData)
     }
 
-    static func waitUntilActive(_ file: UploadedFile, apiKey: String, timeout: TimeInterval) async throws -> UploadedFile {
+    /// `activation` — сколько ждать состояния ACTIVE: короткой диктовке хватает 15 с, кусок встречи на
+    /// 15 минут Files API может готовить дольше.
+    static func waitUntilActive(
+        _ file: UploadedFile, apiKey: String, timeout: TimeInterval,
+        activation: TimeInterval = activationTimeout
+    ) async throws -> UploadedFile {
         var current = file
-        let deadline = Date().addingTimeInterval(activationTimeout)
+        let deadline = Date().addingTimeInterval(activation)
         while current.state.uppercased() == "PROCESSING", Date() < deadline {
             try await Task.sleep(nanoseconds: 500_000_000)
             var request = URLRequest(url: base.appending(path: "v1beta/\(current.name)"))
@@ -215,5 +228,102 @@ enum GeminiTranscribeClient {
         let session = session(timeout: 15)
         defer { session.finishTasksAndInvalidate() }
         _ = try? await session.data(for: request)
+    }
+}
+
+// MARK: - Слова с таймкодами (встречи)
+
+/// Режим встреч (MeetingScribeKit): нужен не готовый текст, а слова с таймкодами — по ним реплики
+/// сшиваются с локальной диаризацией. Включается `mode: {"type": "verbatim",
+/// "timestamp_granularities": ["word"]}`, ответ приходит аннотациями `word_info`
+/// (https://ai.google.dev/gemini-api/docs/transcribe, прочитано 16.09.2026).
+extension GeminiTranscribeClient {
+    struct TimedWord: Equatable, Sendable {
+        var text: String
+        var start: Double
+        var end: Double
+        var speaker: String?
+    }
+
+    /// Предел одного запроса со словными таймкодами: «Audio processing is limited to 30 minutes when
+    /// features like speaker diarization or word-level timestamps are enabled».
+    static var maximumTimedClipSeconds: Double { 1800 }
+
+    /// Распознаёт готовый файл с диска: куски режет вызывающий (ядро), здесь только выгрузка и запрос.
+    static func transcribeWords(
+        fileURL: URL, mimeType: String, apiKey: String, model: String, language: String?,
+        clipDuration: Double, timeout: TimeInterval = 600
+    ) async throws -> [TimedWord] {
+        let data: Data
+        do {
+            data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+        } catch {
+            throw CloudTranscriptionError.audioFileNotFound
+        }
+        let name = fileURL.lastPathComponent
+        let uploaded = try await upload(data, mimeType: mimeType, displayName: name, apiKey: apiKey, timeout: timeout)
+        defer {
+            let uploadedName = uploaded.name
+            Task.detached { await delete(fileName: uploadedName, apiKey: apiKey) }
+        }
+        let active = try await waitUntilActive(
+            uploaded, apiKey: apiKey, timeout: timeout, activation: 120)
+        let body = interactionBody(
+            model: model, uri: active.uri, mimeType: mimeType, language: language, vocabulary: [],
+            wordTimestamps: true)
+        let response = try await postJSON(
+            url: base.appending(path: "v1beta/interactions"), body: body, apiKey: apiKey, timeout: timeout)
+        return try words(from: response, clipDuration: clipDuration)
+    }
+
+    /// Аннотации `word_info` из `steps[].content[].annotations[]`. Если их нет, а текст есть — раскладываем
+    /// слова по куску равномерно: приблизительные таймкоды лучше, чем потерянный кусок записи.
+    static func words(from data: Data, clipDuration: Double) throws -> [TimedWord] {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw CloudTranscriptionError.apiRequestFailed(
+                statusCode: 200, message: String(data: data.prefix(300), encoding: .utf8) ?? "unreadable response")
+        }
+        if let error = object["error"] as? [String: Any] {
+            throw CloudTranscriptionError.apiRequestFailed(
+                statusCode: error["code"] as? Int ?? 200,
+                message: error["message"] as? String ?? "unknown error")
+        }
+
+        var words: [TimedWord] = []
+        for step in object["steps"] as? [[String: Any]] ?? [] {
+            for content in step["content"] as? [[String: Any]] ?? [] {
+                for annotation in content["annotations"] as? [[String: Any]] ?? [] {
+                    guard annotation["type"] as? String == "word_info",
+                        let text = annotation["text"] as? String,
+                        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    else { continue }
+                    let start = offsetSeconds(annotation["start_offset"]) ?? 0
+                    let end = offsetSeconds(annotation["end_offset"]) ?? start
+                    words.append(
+                        TimedWord(
+                            text: text.trimmingCharacters(in: .whitespacesAndNewlines),
+                            start: start, end: max(start, end),
+                            speaker: annotation["speaker"] as? String))
+                }
+            }
+        }
+        if !words.isEmpty { return words.sorted { ($0.start, $0.end) < ($1.start, $1.end) } }
+
+        let text = (try? transcript(from: data)) ?? ""
+        let parts = text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard !parts.isEmpty, clipDuration > 0 else { return [] }
+        let step = clipDuration / Double(parts.count)
+        return parts.enumerated().map { index, word in
+            TimedWord(text: word, start: Double(index) * step, end: Double(index + 1) * step, speaker: nil)
+        }
+    }
+
+    /// `"0.450s"` → 0.45; число приходит как есть.
+    static func offsetSeconds(_ value: Any?) -> Double? {
+        if let number = value as? Double { return number }
+        if let number = value as? Int { return Double(number) }
+        guard let raw = value as? String else { return nil }
+        let trimmed = raw.hasSuffix("s") ? String(raw.dropLast()) : raw
+        return Double(trimmed)
     }
 }

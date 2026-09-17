@@ -2,6 +2,7 @@ import Core
 import FluidAudioAdapter
 import Foundation
 import ParakeetAdapter
+import RemoteAdapter
 import SpeakerKitAdapter
 import WhisperKitAdapter
 
@@ -11,18 +12,27 @@ public enum EngineFactory {
   public static let defaultDiarizer: DiarizerID = .speakerkit
   public static let defaultWhisperModel: ModelID = .whisperLargeV3Turbo
 
+  /// `remote` — облачный провайдер приложения-хоста (ADR-010); без него режим `.gemini` недоступен.
   public static func makeAsr(
     _ id: AsrEngineID,
     model: ModelID? = nil,
     modelStore: ModelStore,
+    remote: (any RemoteTranscribing)? = nil,
     verbose: Bool = false
-  ) -> any AsrEngine {
+  ) throws -> any AsrEngine {
     switch id {
     case .whisperkit:
-      WhisperKitEngine(
+      return WhisperKitEngine(
         modelStore: modelStore, model: model ?? defaultWhisperModel, verbose: verbose)
     case .parakeet:
-      ParakeetEngine(modelStore: modelStore)
+      return ParakeetEngine(modelStore: modelStore)
+    case .gemini:
+      guard let remote else {
+        throw EngineError.modelUnavailable(
+          String(
+            localized: "облачное распознавание доступно только в приложении с ключом провайдера"))
+      }
+      return RemoteAsrEngine(client: remote)
     }
   }
 
@@ -48,6 +58,8 @@ public enum EngineFactory {
     case .whisperkit:
       models.append(contentsOf: [whisperModel ?? defaultWhisperModel, .whisperTokenizer])
     case .parakeet: models.append(.parakeetTDTv3)
+    // Облако: локальных моделей распознавания нет, качать нечего.
+    case .gemini: break
     }
     switch diarizer {
     case .speakerkit?: models.append(.speakerKitPyannote)

@@ -306,6 +306,10 @@ public final class ProcessingCoordinator {
       // Форматы экспорта пустые: приложение рендерит экспорт само, уже с именами спикеров.
       export: ExportOptions(formats: []),
       asrRate: record.engines.asrRate)
+    // Облако: второй проход рассчитан на потери WhisperKit и стоил бы десятков лишних запросов, но
+    // совсем выключать его нельзя — урок 4.1.3: потерянный кусок не должен исчезать молча. Оставляем
+    // небольшой предел: речь без текста добирается отдельными короткими запросами.
+    if record.engines.asr.isCloud { configuration.recovery.maximumWindows = 20 }
     // Языки встреч из настроек (SPEC.md §3.2): между ними маршрутизатор выбирает язык каждого спикера.
     if !candidates.isEmpty { configuration.router.candidates = candidates }
     // Подсказки имён из chat.txt (SPEC.md §3.4) — в транскрипт и для сверки имён дорожек.
