@@ -121,6 +121,23 @@ struct AzureSpeechClientTests {
         #expect(AzureMeetingTranscriber.mapped(CancellationError()) is CancellationError)
     }
 
+    @Test("Migration keeps a SQLite store and its journals together")
+    func storeFamilyIsMovedAsOne() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        FileManager.default.createFile(atPath: directory.appendingPathComponent("default.store").path, contents: Data())
+
+        // Журнал переносить нельзя: на новом месте уже лежит другая база.
+        #expect(SandboxDataMigration.exists(family: "default.store-wal", in: directory, fileManager: .default))
+        #expect(SandboxDataMigration.exists(family: "default.store-shm", in: directory, fileManager: .default))
+        #expect(SandboxDataMigration.exists(family: "default.store", in: directory, fileManager: .default))
+        // Чужие имена не задевает.
+        #expect(!SandboxDataMigration.exists(family: "stats.store", in: directory, fileManager: .default))
+        #expect(!SandboxDataMigration.exists(family: "WhisperModels", in: directory, fileManager: .default))
+    }
+
     @Test("An empty key is rejected before any request leaves the app")
     func emptyKeyIsRejected() async {
         let error = await MeetingCloudCredentials.verifyAndSave(key: "   ", region: nil)

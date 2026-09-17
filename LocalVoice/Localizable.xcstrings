@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Data from the previous version stayed in the app container" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дані попередньої версії залишилися в контейнері програми"
+          }
+        }
+      }
+    },
+    "LocalVoice could not move your dictation history, dictionary, models and meetings out of the sandbox container, so it starts empty. Nothing is lost — the data is still in %@. Move the contents of «Application Support/app.localvoice.LocalVoice» to the same folder in your home Library, or contact the developer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LocalVoice не зміг перенести історію диктування, словник, моделі та зустрічі з контейнера пісочниці, тому запустився порожнім. Нічого не втрачено — дані лишаються в %@. Перенесіть вміст «Application Support/app.localvoice.LocalVoice» до однойменної теки у вашій домашній бібліотеці або зверніться до розробника."
+          }
+        }
+      }
+    },
+    "Later" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пізніше"
+          }
+        }
+      }
+    },
     "Choose where to process meetings — in Azure or on this Mac — and run the self-test on the built-in sample." : {
       "extractionState" : "manual",
       "localizations" : {
