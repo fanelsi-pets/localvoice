@@ -139,6 +139,8 @@ nonisolated public struct ProblemReport: Sendable {
 
   public var generatedAt: Date
   public var appVersion: String
+  /// Версия приложения-хоста (LocalVoice) из его бандла: `appVersion` — версия ядра, по ней хост не узнать.
+  public var hostVersion: String
   public var system: SystemInfo
   public var settings: SettingsSnapshot
   public var models: [ModelEntry]
@@ -155,6 +157,7 @@ nonisolated public struct ProblemReport: Sendable {
   public init(
     generatedAt: Date = Date(),
     appVersion: String = MeetingScribeUIInfo.version,
+    hostVersion: String = ProblemReport.hostVersionString(),
     system: SystemInfo,
     settings: SettingsSnapshot,
     models: [ModelEntry],
@@ -169,6 +172,7 @@ nonisolated public struct ProblemReport: Sendable {
   ) {
     self.generatedAt = generatedAt
     self.appVersion = appVersion
+    self.hostVersion = hostVersion
     self.system = system
     self.settings = settings
     self.models = models
@@ -196,10 +200,20 @@ nonisolated public struct ProblemReport: Sendable {
     return String(decoding: data, as: UTF8.self)
   }
 
+  /// «LocalVoice 4.1.4 (416)» из `Bundle.main`; в тестах и CLI бандла может не быть — тогда «—».
+  public static func hostVersionString(bundle: Bundle = .main) -> String {
+    let info = bundle.infoDictionary ?? [:]
+    let name = (info["CFBundleName"] as? String) ?? bundle.bundleIdentifier ?? "—"
+    let short = (info["CFBundleShortVersionString"] as? String) ?? "—"
+    let build = (info["CFBundleVersion"] as? String) ?? "—"
+    return "\(name) \(short) (\(build))"
+  }
+
   var object: [String: Any] {
     var report: [String: Any] = [
       "generatedAt": Self.timestamp.format(generatedAt),
       "app": appVersion,
+      "host": hostVersion,
       "system": systemObject,
       "settings": settingsObject,
       "models": ["root": modelsRoot, "items": models.map(modelObject)],

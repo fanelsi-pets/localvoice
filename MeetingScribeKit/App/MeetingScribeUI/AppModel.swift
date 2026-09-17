@@ -6,6 +6,7 @@ import Foundation
 import Ingest
 import ModelDownload
 import OCR
+import OSLog
 import Observation
 import Pipeline
 import Store
@@ -740,6 +741,10 @@ public final class AppModel {
           duration = try await decoder.probe(file).duration
         } catch {
           problem = error.localizedDescription
+          // В отчёт о проблеме: без этого «Could not decode …» из диалога импорта нигде не сохраняется.
+          AppLog.app.error(
+            "Импорт: файл не читается \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+          )
         }
         guard let self, pendingImport?.id == requestID else { return }
         if let index = pendingImport?.items.firstIndex(where: { $0.url == file }) {
