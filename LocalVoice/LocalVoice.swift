@@ -35,6 +35,10 @@ struct LocalVoiceApp: App {
     @StateObject private var prewarmService: ModelPrewarmService
 
     init() {
+        // Данные прежних сборок лежат в контейнере песочницы: перенести их до того, как что-нибудь
+        // прочитает настройки или откроет хранилища (SwiftData, библиотека встреч).
+        SandboxDataMigration.runIfNeeded()
+
         LocalOnlyNetworkBlocker.install()
 
         // Disable HTTP response caching — prevents API responses from being stored in Cache.db

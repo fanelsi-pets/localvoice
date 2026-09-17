@@ -48,6 +48,14 @@ The script signs the embedded Whisper framework and app with Hardened Runtime
 and a secure timestamp, signs the DMG, waits for notarization, staples the
 ticket, validates Gatekeeper acceptance, and regenerates the SHA-256 checksum.
 
+Since 4.3.0 the released build is **not** sandboxed (`LocalVoice/LocalVoice.entitlements`
+has no `com.apple.security.app-sandbox`): a meeting recording may sit in any folder, and
+the sandbox only allowed files chosen one by one in an open panel. Data that used to live
+in `~/Library/Containers/app.localvoice.LocalVoice` is moved to
+`~/Library/Application Support/app.localvoice.LocalVoice` on the first launch by
+`SandboxDataMigration`; the old container is left in place as a safety copy. A build for
+the App Store, should it ever appear, needs its own sandboxed entitlements file.
+
 ## GitHub Actions secrets
 
 The tag-triggered release workflow requires:

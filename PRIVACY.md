@@ -5,11 +5,11 @@ for dictation, and Microsoft Azure for meeting transcription (see **Meetings**).
 
 ## Enforcement layers
 
-1. `LocalVoice.entitlements` and `LocalVoice.local.entitlements` enable the macOS App Sandbox. Client networking is enabled only for the optional Gemini integration; server networking remains disabled.
+1. The build you install is signed with a Developer ID certificate, notarized by Apple and runs under the Hardened Runtime. Since 4.3.0 it does **not** use the App Sandbox: recordings live wherever you keep them, and the sandbox only allowed files picked one by one in an open panel. macOS still gates the Desktop, Documents and Downloads folders — it asks once, and you can revoke that access at any time in System Settings → Privacy & Security → Files and Folders. The app asks for no other system access beyond the microphone and accessibility for dictation.
 2. `LocalOnlyNetworkBlocker` rejects URL Loading System requests whose scheme is HTTP, HTTPS, WS, or WSS unless the destination host is on a short allow list: the Gemini and OpenAI-compatible endpoints behind the opt-in cloud modes, Azure Speech (`*.api.cognitive.microsoft.com`, `*.cognitiveservices.azure.com`) for meeting transcription, Hugging Face for model downloads, and GitHub for updates.
 3. `CloudProviderRegistry` exposes Gemini only. Groq and other remote providers are unavailable.
-4. CloudKit is disabled for every SwiftData store.
-5. The app has no licensing, announcement, telemetry, or automatic-update services.
+4. CloudKit is disabled for every SwiftData store; everything the app keeps — transcripts, dictionary, statistics, meetings, models — stays in `~/Library/Application Support/app.localvoice.LocalVoice` on this Mac.
+5. The app has no licensing, announcement or telemetry services. Updates are checked against this repository's releases only when you ask.
 
 ## Gemini mode
 
@@ -29,9 +29,8 @@ The Meetings feature (MeetingScribe core) processes Zoom recordings in one of tw
   used only for transcription. No key is shipped in the app or in this repository.
 
 Whatever recognizes the speech, speaker separation, voice profiles, names, project memory, follow-ups stored in
-the library and export always run on this Mac. Recordings you import are read through security-scoped bookmarks
-inside the sandbox; exports are written only to files and folders you choose, which is why the entitlements now
-include `com.apple.security.files.user-selected.read-write`.
+the library and export always run on this Mac. A recording is read from wherever you keep it — the app reads the
+file you point it at and nothing else; exports are written only to the files and folders you choose.
 
 ## Data locations
 
@@ -45,4 +44,4 @@ After building, inspect the signed app:
 codesign -d --entitlements :- ~/Downloads/LocalVoice.app
 ```
 
-The output should show `com.apple.security.app-sandbox = true`, `com.apple.security.network.client = true`, and no network server key. For an additional runtime check, monitor the process while exercising local and Gemini transcription.
+The output should show `com.apple.security.network.client = true`, `com.apple.security.device.audio-input = true` and no network server key; `com.apple.security.app-sandbox` is absent since 4.3.0. `codesign -dv --verbose=4 LocalVoice.app` should report the Developer ID authority and `flags=0x10000(runtime)`, and `spctl --assess --type execute` should accept the app. For an additional runtime check, monitor the process while exercising local and cloud transcription.
