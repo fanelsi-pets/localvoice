@@ -51,7 +51,7 @@ public final class NameScanController {
     elapsedSeconds = 0
     errorText = nil
     summary = nil
-    let reporter = ProgressReporter()
+    let reporter = Core.ProgressReporter()
     var options = OCROptions()
     options.nameHints = hints
     let scanner = VideoNameScanner(videoURL: videoURL, options: options)
@@ -103,8 +103,8 @@ public final class NameScanController {
   /// Прогноз по фактической скорости прохода: показывается после 15 с или 10 % (SPEC.md §3.7 п. 5).
   static func remaining(elapsed: Double, fraction: Double) -> String? {
     guard fraction > 0.001,
-      elapsed >= ProgressReporter.estimateAfterSeconds
-        || fraction >= ProgressReporter.estimateAfterFraction
+      elapsed >= Core.ProgressReporter.estimateAfterSeconds
+        || fraction >= Core.ProgressReporter.estimateAfterFraction
     else { return nil }
     return String(localized: "осталось ")
       + ProgressPhrasing.remaining(elapsed * (1 - fraction) / fraction)

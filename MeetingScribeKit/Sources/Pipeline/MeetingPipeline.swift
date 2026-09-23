@@ -162,7 +162,7 @@ public actor MeetingPipeline {
     source: URL,
     cacheDirectory: URL,
     configuration: PipelineConfiguration = PipelineConfiguration(),
-    reporter: ProgressReporter,
+    reporter: Core.ProgressReporter,
     discovered: SegmentSink? = nil,
     diarized: (@Sendable (DiarizationResult) -> Void)? = nil,
     languages: (@Sendable ([SpeakerLanguage]) -> Void)? = nil
@@ -182,7 +182,7 @@ public actor MeetingPipeline {
     input: PipelineInput,
     cacheDirectory: URL,
     configuration: PipelineConfiguration = PipelineConfiguration(),
-    reporter: ProgressReporter,
+    reporter: Core.ProgressReporter,
     discovered: SegmentSink? = nil,
     diarized: (@Sendable (DiarizationResult) -> Void)? = nil,
     languages: (@Sendable ([SpeakerLanguage]) -> Void)? = nil
@@ -813,6 +813,11 @@ public actor MeetingPipeline {
       segments, turns: turns.isEmpty ? nil : turns, options: configuration.filter)
     let utterances = Fuser.fuse(segments: report.kept, turns: turns, options: configuration.fuser)
     let decoded = run.partial.decoded
+    // Повреждённые участки: по общему треку — из него, по раздельным дорожкам — сумма по всем.
+    let damaged =
+      run.tracks.isEmpty
+      ? (decoded?.damagedSeconds ?? 0)
+      : run.tracks.compactMap { $0.decoded?.damagedSeconds }.reduce(0, +)
     // Даты — до целых секунд: JSON кодирует их в ISO 8601 без долей, round-trip должен давать равную структуру.
     var meeting = configuration.meeting.filling(missingFrom: MeetingInfo.inferred(from: source))
     meeting.date = meeting.date.map(Self.wholeSeconds)
@@ -832,7 +837,7 @@ public actor MeetingPipeline {
       peakMemoryBytes: ProcessMemory.snapshot()?.peakResidentBytes,
       diagnostics: TranscriptDiagnostics(
         dropped: report.dropped, regions: regions, noSpeechEvidence: report.noSpeechEvidence,
-        recovered: run.recovered),
+        recovered: run.recovered, damagedSeconds: damaged),
       speakerEmbeddings: embeddings)
     return Assembled(transcript: transcript, report: report)
   }
@@ -875,7 +880,7 @@ public actor MeetingPipeline {
 
   /// Состояние одного прогона: стадии, тайминги, частичные результаты. Живёт внутри актора.
   private final class RunState {
-    let reporter: ProgressReporter
+    let reporter: Core.ProgressReporter
     var partial = PartialResult()
     var timings: [StageTiming] = []
     var currentStage: Stage?
@@ -886,7 +891,7 @@ public actor MeetingPipeline {
     /// Пустые окна, пересчитанные вторым проходом (для диагностики транскрипта).
     var recovered: [RecoveredWindow] = []
 
-    init(reporter: ProgressReporter) {
+    init(reporter: Core.ProgressReporter) {
       self.reporter = reporter
     }
 

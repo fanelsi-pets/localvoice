@@ -72,7 +72,7 @@ public final class SelfTestController {
     stageChecks = ProgressPresentation.stageChecks(
       .idle, includesDiarization: selection.diarizer != nil)
 
-    let reporter = ProgressReporter()
+    let reporter = Core.ProgressReporter()
     let heartbeat = reporter.startHeartbeat()
     let runner = SelfTestRunner(engines: engines, selection: selection)
     task = Task { [weak self] in

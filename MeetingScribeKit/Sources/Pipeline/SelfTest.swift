@@ -182,7 +182,7 @@ public actor SelfTestRunner {
   public func run(
     sample: SelfTestSample,
     cacheDirectory: URL,
-    reporter: ProgressReporter,
+    reporter: Core.ProgressReporter,
     discovered: SegmentSink? = nil
   ) async throws -> SelfTestReport {
     let startedAt = Date()

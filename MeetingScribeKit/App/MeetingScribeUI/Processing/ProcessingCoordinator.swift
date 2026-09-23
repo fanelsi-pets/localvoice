@@ -58,7 +58,7 @@ public final class ProcessingCoordinator {
   @ObservationIgnored private var worker: Task<Void, Never>?
   /// Задача текущего прогона — её отменяет «Отменить» (движки и пайплайн укладываются в 2 с).
   @ObservationIgnored private var activeRun: Task<PipelineResult, any Error>?
-  @ObservationIgnored private var activeReporter: ProgressReporter?
+  @ObservationIgnored private var activeReporter: Core.ProgressReporter?
   /// Сколько сегментов пришло в ленту каждой встречи — число для отчёта диагностики (без текста).
   @ObservationIgnored private var feedCounts: [UUID: Int] = [:]
 
@@ -214,7 +214,7 @@ public final class ProcessingCoordinator {
     updateQueuePositions()
     onUpdate?(.recordChanged(job.record))
 
-    let reporter = ProgressReporter()
+    let reporter = Core.ProgressReporter()
     activeReporter = reporter
     let (signals, continuation) = AsyncStream.makeStream(
       of: PipelineSignal.self, bufferingPolicy: .unbounded)
@@ -291,7 +291,7 @@ public final class ProcessingCoordinator {
     projectName: String?,
     candidates: [Language],
     cacheDirectory: URL,
-    reporter: ProgressReporter,
+    reporter: Core.ProgressReporter,
     signals: AsyncStream<PipelineSignal>.Continuation
   ) async throws -> PipelineResult {
     let asr = try await engines.asr(for: record.engines)
