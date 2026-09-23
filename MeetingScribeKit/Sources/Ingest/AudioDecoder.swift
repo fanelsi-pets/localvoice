@@ -30,6 +30,13 @@ public struct AudioDecoder: AudioDecoding {
   /// Шаг отчётов о прогрессе в секундах обработанного аудио (SPEC.md §3.7: не реже раза в секунду).
   private static let progressStepSeconds = 1.0
 
+  /// Сколько секунд после обрыва пробуем найти место, с которого декодер снова читает.
+  static let maxSkipSeconds = 60.0
+  /// Длина пробы при поиске такого места.
+  private static let probeSeconds = 3.0
+  /// Ближе этого к концу записи продолжать бессмысленно.
+  static let minimumTailSeconds = 0.5
+
   /// Выделенная очередь: `copyNextSampleBuffer()` блокирует поток, кооперативный пул для этого нельзя.
   private static let readerQueue = DispatchQueue(
     label: "app.meetingscribe.ingest.decode", qos: .userInitiated, attributes: .concurrent)
@@ -59,26 +66,32 @@ public struct AudioDecoder: AudioDecoding {
     let track = try await Self.audioTrack(of: asset, source: source)
     let totalHint = await Self.containerDuration(of: asset, track: track)
     let target = try Self.prepareTarget(in: cacheDirectory, source: source)
-    let session = try Self.makeSession(asset: asset, track: track, source: source)
 
-    let frames: Int
+    let outcome: DecodeOutcome
     do {
-      frames = try await Self.runOffCooperativePool(
-        session: session, source: source, target: target, totalHint: totalHint, progress: progress)
+      outcome = try await Self.runOffCooperativePool(
+        input: DecodeInput(asset: asset, track: track), source: source, target: target,
+        totalHint: totalHint, progress: progress)
     } catch {
       // Обрывок WAV хуже отсутствующего: следующий запуск не должен принять его за готовый кэш.
       try? FileManager.default.removeItem(at: target)
       throw error
     }
-    guard frames > 0 else {
+    guard outcome.frames > 0 else {
       try? FileManager.default.removeItem(at: target)
       throw IngestError.decodingFailed(source, reason: String(localized: "аудиодорожка пуста"))
     }
+    if outcome.damagedSeconds > 0 {
+      AppLog.pipeline.warning(
+        "decode: \(source.lastPathComponent, privacy: .public) — пропущено \(outcome.damagedSeconds, privacy: .public) s повреждённого звука"
+      )
+    }
 
-    let duration = PCMAudio.seconds(forSampleIndex: frames)
+    let duration = PCMAudio.seconds(forSampleIndex: outcome.frames)
     progress?(.audio(.decoding, processed: duration, total: duration))
     return DecodedAudio(
-      url: target, sourceURL: source, duration: duration, sampleCount: frames)
+      url: target, sourceURL: source, duration: duration, sampleCount: outcome.frames,
+      damagedSeconds: outcome.damagedSeconds)
   }
 
   public func loadPCM(_ decoded: DecodedAudio) async throws -> PCMAudio {
@@ -162,14 +175,21 @@ extension AudioDecoder {
     return cacheDirectory.appending(path: outputFileName)
   }
 
-  private static func makeSession(asset: AVURLAsset, track: AVAssetTrack, source: URL) throws
-    -> DecodeSession
-  {
+  /// Сессия чтения начиная с `from` секунды; `window` ограничивает длину отрезка — он нужен пробам,
+  /// которыми ищется место, с которого декодер снова читает после повреждённого участка.
+  private static func makeSession(
+    asset: AVURLAsset, track: AVAssetTrack, source: URL, from: Double = 0, window: Double? = nil
+  ) throws -> DecodeSession {
     let reader: AVAssetReader
     do {
       reader = try AVAssetReader(asset: asset)
     } catch {
       throw IngestError.decodingFailed(source, reason: error.localizedDescription)
+    }
+    if from > 0 || window != nil {
+      let start = CMTime(seconds: max(0, from), preferredTimescale: 600)
+      let length = window.map { CMTime(seconds: $0, preferredTimescale: 600) } ?? .positiveInfinity
+      reader.timeRange = CMTimeRange(start: start, duration: length)
     }
     let output = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
     // Данные читаются один раз и сразу копируются в наш буфер — копия внутри AVFoundation не нужна.
@@ -193,41 +213,51 @@ extension AudioDecoder {
 
 extension AudioDecoder {
   /// Запускает блокирующее чтение на выделенной очереди и связывает его с отменой задачи.
+  /// Сессий может быть несколько (после повреждённого участка чтение продолжается новой), поэтому
+  /// отмена идёт через `DecodeRun`: он знает текущую сессию.
   private static func runOffCooperativePool(
-    session: DecodeSession,
+    input: DecodeInput,
     source: URL,
     target: URL,
     totalHint: Double,
     progress: ProgressSink?
-  ) async throws -> Int {
-    try await withTaskCancellationHandler {
+  ) async throws -> DecodeOutcome {
+    let run = DecodeRun()
+    return try await withTaskCancellationHandler {
       try await withCheckedThrowingContinuation {
-        (continuation: CheckedContinuation<Int, any Error>) in
+        (continuation: CheckedContinuation<DecodeOutcome, any Error>) in
         readerQueue.async {
           do {
-            let frames = try write(
-              session: session, source: source, target: target, totalHint: totalHint,
+            let outcome = try write(
+              run: run, input: input, source: source, target: target, totalHint: totalHint,
               progress: progress)
-            continuation.resume(returning: frames)
+            continuation.resume(returning: outcome)
           } catch {
             continuation.resume(throwing: error)
           }
         }
       }
     } onCancel: {
-      session.cancel()
+      run.cancel()
     }
   }
 
   /// Владеет `AVAudioFile`: файл закрывается (и дописывает заголовок) на выходе из функции.
+  ///
+  /// Повреждённый участок не стоит всей записи. Реальный случай: битый кадр AAC на 19-й минуте
+  /// 82-минутной встречи — `AVFoundation -11800` поверх `paramErr -50`; на том же месте обрывается и
+  /// `afconvert`, то есть дело в файле, а не в декодере. Поэтому чтение идёт отрезками: сорвалось —
+  /// ищем ближайшее место, с которого декодер снова читает, добиваем пропуск тишиной (иначе съедут
+  /// таймкоды всего остатка) и продолжаем.
   private static func write(
-    session: DecodeSession,
+    run: DecodeRun,
+    input: DecodeInput,
     source: URL,
     target: URL,
     totalHint: Double,
     progress: ProgressSink?
-  ) throws -> Int {
-    guard !session.isCancelled else { throw IngestError.cancelled }
+  ) throws -> DecodeOutcome {
+    guard !run.isCancelled else { throw IngestError.cancelled }
     let file: AVAudioFile
     do {
       file = try WAVFile.open(forWriting: target)
@@ -239,38 +269,130 @@ extension AudioDecoder {
         )
       )
     }
-    do {
-      return try pump(
-        session: session, file: file, source: source, totalHint: totalHint, progress: progress)
-    } catch let error as IngestError {
-      throw error
-    } catch {
-      throw IngestError.decodingFailed(source, reason: error.localizedDescription)
+
+    let asset = input.asset
+    let track = input.track
+    var frames = 0
+    var position = 0.0
+    var damaged = 0.0
+    while true {
+      let session = try makeSession(asset: asset, track: track, source: source, from: position)
+      run.begin(session)
+      let segment: ReadSegment
+      do {
+        segment = try pump(
+          session: session, file: file, source: source, startSeconds: position,
+          totalHint: totalHint, progress: progress)
+      } catch let error as IngestError {
+        throw error
+      } catch {
+        throw IngestError.decodingFailed(source, reason: error.localizedDescription)
+      }
+      frames += segment.frames
+      position = max(position + PCMAudio.seconds(forSampleIndex: segment.frames), segment.position)
+      guard let failure = segment.failure else { break }
+
+      // Ни одного кадра — это не повреждённый участок, а нечитаемый файл: причину показываем как есть.
+      guard frames > 0,
+        let resume = resumePoint(
+          asset: asset, track: track, source: source, after: position, limit: totalHint, run: run)
+      else {
+        throw IngestError.decodingFailed(source, reason: failure)
+      }
+      let gap = resume - position
+      frames += try writeSilence(seconds: gap, to: file)
+      damaged += gap
+      position = resume
+      AppLog.pipeline.warning(
+        "decode: повреждённый участок \(gap, privacy: .public) s, чтение продолжено с \(resume, privacy: .public) s"
+      )
+      progress?(
+        .audio(
+          .decoding, processed: position, total: max(totalHint, position), timecode: position,
+          pulse: String(localized: "пропущено \(Int(gap.rounded())) с повреждённого звука")))
     }
+    return DecodeOutcome(frames: frames, damagedSeconds: damaged)
   }
 
-  /// Цикл чтения: блок сэмплов → буфер 256 KB → WAV. Возвращает число записанных кадров.
+  /// Ближайшее место после `position`, с которого декодер снова читает: пробы по секунде, не дальше
+  /// `maxSkipSeconds`. `nil` — дальше не читается ничего (это уже не пропуск, а конец пригодного звука).
+  private static func resumePoint(
+    asset: AVURLAsset, track: AVAssetTrack, source: URL, after position: Double, limit: Double,
+    run: DecodeRun
+  ) -> Double? {
+    for offset in probeOffsets(after: position, limit: limit) {
+      if run.isCancelled { return nil }
+      guard
+        let probe = try? makeSession(
+          asset: asset, track: track, source: source, from: offset, window: probeSeconds),
+        probe.startReading()
+      else { continue }
+      var samples = 0
+      while let buffer = probe.output.copyNextSampleBuffer() {
+        samples += CMSampleBufferGetNumSamples(buffer)
+      }
+      let readable = samples > 0 && probe.reader.error == nil
+      probe.cancel()
+      if readable { return offset }
+    }
+    return nil
+  }
+
+  /// Точки, в которых пробуем продолжить чтение: по секунде вперёд, но не дальше `maxSkipSeconds`
+  /// и не за конец записи. Вынесено отдельно, потому что это единственная часть с политикой пропуска.
+  static func probeOffsets(
+    after position: Double, limit: Double, step: Double = 1, maxSkip: Double = maxSkipSeconds
+  ) -> [Double] {
+    guard position.isFinite, position >= 0, step > 0 else { return [] }
+    var end = position + maxSkip
+    if limit > 0 { end = min(end, limit - minimumTailSeconds) }
+    var points: [Double] = []
+    var offset = position + step
+    while offset <= end {
+      points.append(offset)
+      offset += step
+    }
+    return points
+  }
+
+  /// Тишина вместо повреждённого участка: таймкоды остального звука не должны съезжать.
+  private static func writeSilence(seconds: Double, to file: AVAudioFile) throws -> Int {
+    let total = max(0, PCMAudio.sampleIndex(forSeconds: seconds))
+    guard total > 0 else { return 0 }
+    let chunk = [Float](repeating: 0, count: min(total, flushFrames))
+    var written = 0
+    while written < total {
+      let take = min(chunk.count, total - written)
+      try WAVFile.append(chunk[0..<take], to: file)
+      written += take
+    }
+    return written
+  }
+
+  /// Цикл чтения одного отрезка: блок сэмплов → буфер 256 KB → WAV. Обрыв не бросается наружу —
+  /// он возвращается вместе с тем, что успели прочитать, а решение принимает `write`.
   private static func pump(
     session: DecodeSession,
     file: AVAudioFile,
     source: URL,
+    startSeconds: Double,
     totalHint: Double,
     progress: ProgressSink?
-  ) throws -> Int {
+  ) throws -> ReadSegment {
     let reader = session.reader
     let output = session.output
     // Старт и отмена — под одним замком: `cancelReading()` до `startReading()` заканчивается
     // NSInternalInconsistencyException «cannot be called again» (замечено под нагрузкой в тестах).
     guard session.startReading() else {
       if session.isCancelled { throw IngestError.cancelled }
-      throw IngestError.decodingFailed(source, reason: failureReason(reader))
+      return ReadSegment(frames: 0, position: startSeconds, failure: failureReason(reader))
     }
 
     var pending: [Float] = []
     pending.reserveCapacity(flushFrames)
     var frames = 0
-    var position = 0.0
-    var reported = 0.0
+    var position = startSeconds
+    var reported = startSeconds
     var finished = false
 
     // Полоса появляется до первого блока: пользователь видит, что стадия началась.
@@ -286,7 +408,8 @@ extension AudioDecoder {
         }
         let written = try append(sample, to: file, pending: &pending)
         frames += written
-        position = max(position, presentation(of: sample, fallback: frames))
+        position = max(
+          position, presentation(of: sample, fallback: frames, offset: startSeconds))
         if position - reported >= progressStepSeconds {
           reported = position
           progress?(.audio(.decoding, processed: position, total: max(totalHint, position)))
@@ -295,18 +418,18 @@ extension AudioDecoder {
     }
 
     if session.isCancelled { throw IngestError.cancelled }
-    switch reader.status {
-    case .completed:
-      break
-    case .cancelled:
-      throw IngestError.cancelled
-    default:
-      throw IngestError.decodingFailed(source, reason: failureReason(reader))
-    }
+    // Хвост буфера пишем до разбора статуса: прочитанное до обрыва — это уже готовый звук.
     if !pending.isEmpty {
       try WAVFile.append(pending[...], to: file)
     }
-    return frames
+    switch reader.status {
+    case .completed:
+      return ReadSegment(frames: frames, position: position, failure: nil)
+    case .cancelled:
+      throw IngestError.cancelled
+    default:
+      return ReadSegment(frames: frames, position: position, failure: failureReason(reader))
+    }
   }
 
   /// Копирует сэмплы блока в буфер, сбрасывая его в файл по мере наполнения.
@@ -335,14 +458,17 @@ extension AudioDecoder {
     return written
   }
 
-  /// Конец блока по таймкоду записи; если таймкод недоступен — по числу записанных кадров.
-  private static func presentation(of sample: CMSampleBuffer, fallback frames: Int) -> Double {
+  /// Конец блока по таймкоду записи; если таймкод недоступен — по числу кадров этого отрезка плюс его
+  /// начало (`offset`), чтобы позиция оставалась абсолютной и после пропуска повреждённого места.
+  private static func presentation(of sample: CMSampleBuffer, fallback frames: Int, offset: Double)
+    -> Double
+  {
     let stamp = CMSampleBufferGetPresentationTimeStamp(sample)
-    guard stamp.isNumeric else { return PCMAudio.seconds(forSampleIndex: frames) }
+    guard stamp.isNumeric else { return offset + PCMAudio.seconds(forSampleIndex: frames) }
     let seconds =
       CMTimeGetSeconds(stamp)
       + PCMAudio.seconds(forSampleIndex: CMSampleBufferGetNumSamples(sample))
-    return seconds.isFinite ? seconds : PCMAudio.seconds(forSampleIndex: frames)
+    return seconds.isFinite ? seconds : offset + PCMAudio.seconds(forSampleIndex: frames)
   }
 
   private static func failureReason(_ reader: AVAssetReader) -> String {
@@ -362,6 +488,54 @@ extension AudioDecoder {
 
 /// Держит `AVAssetReader` между async-контекстом и рабочим потоком.
 ///
+/// Запись и её аудиодорожка для рабочего потока. `AVAssetTrack` не `Sendable`, но после создания его
+/// трогает только этот поток — как и reader внутри `DecodeSession`.
+private struct DecodeInput: @unchecked Sendable {
+  let asset: AVURLAsset
+  let track: AVAssetTrack
+}
+
+/// Итог декодирования: сколько кадров записано и сколько секунд записи оказалось нечитаемо.
+private struct DecodeOutcome {
+  var frames: Int
+  var damagedSeconds: Double
+}
+
+/// Итог одного отрезка чтения: `failure` — текст обрыва, если reader остановился не по концу данных.
+private struct ReadSegment {
+  var frames: Int
+  var position: Double
+  var failure: String?
+}
+
+/// Отмена всего декодирования, у которого может смениться сессия: хранит текущую и гасит её.
+private final class DecodeRun: @unchecked Sendable {
+  private struct State {
+    var cancelled = false
+    var session: DecodeSession?
+  }
+  private let state = Mutex(State())
+
+  var isCancelled: Bool { state.withLock { $0.cancelled } }
+
+  /// Новая сессия становится текущей; если отмена уже пришла, сессия гасится сразу.
+  func begin(_ session: DecodeSession) {
+    let cancelled = state.withLock { state -> Bool in
+      state.session = session
+      return state.cancelled
+    }
+    if cancelled { session.cancel() }
+  }
+
+  func cancel() {
+    let session = state.withLock { state -> DecodeSession? in
+      state.cancelled = true
+      return state.session
+    }
+    session?.cancel()
+  }
+}
+
 /// `@unchecked Sendable` осознанно: reader и output после создания трогает только рабочий поток,
 /// а флаг отмены закрыт `Mutex`. `cancelReading()` документирован как безопасный из любого потока —
 /// именно он разблокирует зависший `copyNextSampleBuffer()`.

@@ -27002,6 +27002,40 @@
           }
         }
       }
+    },
+    "Эти секунды записи не читаются — на их месте тишина, остальные таймкоды не сдвинулись" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These seconds of the recording cannot be read — there is silence in their place, and the rest of the timecodes did not shift"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ці секунди запису не читаються — на їхньому місці тиша, решта таймкодів не зсунулася"
+          }
+        }
+      }
+    },
+    "пропущено %lld с повреждённого звука" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld s of damaged audio skipped"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пропущено %lld с пошкодженого звуку"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -36,16 +36,20 @@ public struct DecodedAudio: Hashable, Codable, Sendable {
   public var duration: Double
   public var sampleCount: Int
   public var sampleRate: Int
+  /// Сколько секунд записи не удалось прочитать: повреждённые участки заменены тишиной, чтобы таймкоды
+  /// остального звука не съехали. Ноль — запись прочитана целиком.
+  public var damagedSeconds: Double
 
   public init(
     url: URL, sourceURL: URL, duration: Double, sampleCount: Int,
-    sampleRate: Int = PCMAudio.sampleRate
+    sampleRate: Int = PCMAudio.sampleRate, damagedSeconds: Double = 0
   ) {
     self.url = url
     self.sourceURL = sourceURL
     self.duration = duration
     self.sampleCount = sampleCount
     self.sampleRate = sampleRate
+    self.damagedSeconds = damagedSeconds
   }
 }
 

@@ -136,16 +136,21 @@ public struct TranscriptDiagnostics: Hashable, Codable, Sendable {
   public var noSpeechEvidence: [Segment]
   /// Пустые окна, пересчитанные вторым проходом; nil — проход не выполнялся (старые транскрипты).
   public var recovered: [RecoveredWindow]?
+  /// Сколько секунд записи не удалось прочитать: повреждённые участки заменены тишиной, чтобы таймкоды
+  /// остального звука не съехали. nil — старый транскрипт, 0 — запись прочиталась целиком.
+  public var damagedSeconds: Double?
 
   public init(
     dropped: [DroppedSegment] = [], regions: [LanguageRegion] = [],
     noSpeechEvidence: [Segment] = [],
-    recovered: [RecoveredWindow]? = nil
+    recovered: [RecoveredWindow]? = nil,
+    damagedSeconds: Double? = nil
   ) {
     self.dropped = dropped
     self.regions = regions
     self.noSpeechEvidence = noSpeechEvidence
     self.recovered = recovered
+    self.damagedSeconds = damagedSeconds
   }
 
   public static let empty = TranscriptDiagnostics()

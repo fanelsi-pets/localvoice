@@ -52,6 +52,16 @@ struct MeetingHeaderView: View {
           Label(project, systemImage: "folder")
         }
         Label(record.engines.title, systemImage: "cpu")
+        // Повреждённый звук: честно говорим, что в этом месте тишина, а не пропавшая реплика.
+        if let damaged = transcript.diagnostics.damagedSeconds, damaged >= 0.5 {
+          Label(
+            "пропущено \(Int(damaged.rounded())) с повреждённого звука",
+            systemImage: "exclamationmark.triangle"
+          )
+          .foregroundStyle(.orange)
+          .help("Эти секунды записи не читаются — на их месте тишина, остальные таймкоды не сдвинулись")
+          .accessibilityIdentifier("meeting.damagedAudio")
+        }
       }
       .font(.caption)
       .foregroundStyle(.secondary)
