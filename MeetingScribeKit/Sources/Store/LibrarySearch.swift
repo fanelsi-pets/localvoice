@@ -2,20 +2,17 @@ import Core
 import Foundation
 import GRDB
 
-// Полнотекстовый поиск по библиотеке (SPEC.md §3.6): реплики всех встреч и записи памяти проекта.
-// Индексы — обычные таблицы FTS5 с токенизатором `unicode61 remove_diacritics 2`. Он сворачивает
+// Полнотекстовый поиск по библиотеке (SPEC.md §3.6): реплики всех встреч.
+// Индекс — обычная таблица FTS5 с токенизатором `unicode61 remove_diacritics 2`. Он сворачивает
 // регистр кириллицы, но не считает «ё» и «е» одной буквой (и, к счастью, не сводит украинские «ї», «й»
 // к «і», «и»), поэтому в индекс кладётся нормализованная копия `search_text` (только ё→е), а оригинал
 // лежит рядом UNINDEXED-колонкой и возвращается пользователю как есть.
 
-/// Найденное место: реплика встречи или запись памяти проекта.
+/// Найденное место: реплика встречи.
 public struct SearchHit: Identifiable, Hashable, Sendable {
   public enum Kind: Hashable, Sendable {
     /// Реплика транскрипта: номер в списке и таймкоды для перехода.
     case utterance(index: Int, start: Double, end: Double, speakerID: Int?)
-    case decision(UUID)
-    case actionItem(UUID)
-    case question(UUID)
   }
 
   public var kind: Kind
@@ -49,17 +46,6 @@ public struct SearchHit: Identifiable, Hashable, Sendable {
     switch kind {
     case .utterance(let index, _, _, _):
       "u:\(meetingID?.uuidString ?? "-"):\(index)"
-    case .decision(let itemID): "d:\(itemID.uuidString)"
-    case .actionItem(let itemID): "a:\(itemID.uuidString)"
-    case .question(let itemID): "q:\(itemID.uuidString)"
-    }
-  }
-
-  /// Запись памяти проекта, если найдено не в репликах.
-  public var itemID: UUID? {
-    switch kind {
-    case .utterance: nil
-    case .decision(let itemID), .actionItem(let itemID), .question(let itemID): itemID
     }
   }
 
@@ -75,7 +61,7 @@ extension LibraryStore {
   static let highlightStart: Character = "\u{1}"
   static let highlightEnd: Character = "\u{2}"
 
-  /// Полнотекстовый поиск (SPEC.md §3.6) по репликам всех встреч и по решениям, задачам и вопросам.
+  /// Полнотекстовый поиск (SPEC.md §3.6) по репликам всех встреч.
   /// `projectID` ограничивает выдачу проектом. Пустой запрос — пустая выдача. Порядок — по bm25.
   public func search(_ query: String, projectID: UUID? = nil, limit: Int = 200) throws
     -> [SearchHit]
@@ -85,7 +71,6 @@ extension LibraryStore {
     do {
       let hits = try pool.read { db in
         try Self.utteranceHits(pattern: pattern, projectID: projectID, limit: limit, in: db)
-          + Self.memoryHits(pattern: pattern, projectID: projectID, limit: limit, in: db)
       }
       // bm25 отрицателен, лучшие совпадения — меньше; `id` разводит равные оценки предсказуемо.
       return Array(hits.sorted { ($0.rank, $0.id) < ($1.rank, $1.id) }.prefix(limit))
@@ -155,53 +140,6 @@ extension LibraryStore {
         highlights: highlightRanges(marked: marked, text: text),
         rank: row["score"] ?? 0)
     }
-  }
-
-  private static func memoryHits(
-    pattern: String, projectID: UUID?, limit: Int, in db: Database
-  ) throws -> [SearchHit] {
-    var sql = """
-      SELECT item_id, kind, project_id, meeting_id, text,
-             highlight(memory_index, \(LibraryDatabase.memorySearchColumn), ?, ?) AS marked,
-             bm25(memory_index) AS score
-      FROM memory_index
-      WHERE memory_index MATCH ?
-      """
-    var arguments: [(any DatabaseValueConvertible)?] = [
-      String(highlightStart), String(highlightEnd), pattern,
-    ]
-    if let projectID {
-      sql += "\n  AND project_id = ?"
-      arguments.append(projectID.uuidString)
-    }
-    sql += "\nORDER BY rank LIMIT ?"
-    arguments.append(limit)
-
-    return try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
-      .compactMap { row in
-        let itemText: String? = row["item_id"]
-        let kindText: String? = row["kind"]
-        guard let itemID = itemText.flatMap(UUID.init(uuidString:)),
-          let kind = kindText.flatMap(LibraryDatabase.MemoryKind.init(rawValue:))
-        else { return nil }
-        let text: String = row["text"] ?? ""
-        let marked: String = row["marked"] ?? ""
-        let meetingText: String? = row["meeting_id"]
-        let projectText: String? = row["project_id"]
-        let hitKind: SearchHit.Kind =
-          switch kind {
-          case .decision: .decision(itemID)
-          case .action: .actionItem(itemID)
-          case .question: .question(itemID)
-          }
-        return SearchHit(
-          kind: hitKind,
-          meetingID: meetingText.flatMap(UUID.init(uuidString:)),
-          projectID: projectText.flatMap(UUID.init(uuidString:)),
-          text: text,
-          highlights: highlightRanges(marked: marked, text: text),
-          rank: row["score"] ?? 0)
-      }
   }
 
   /// Переносит подсветку с `search_text` (с маркерами) на оригинал: нормализация ё→е не меняет число

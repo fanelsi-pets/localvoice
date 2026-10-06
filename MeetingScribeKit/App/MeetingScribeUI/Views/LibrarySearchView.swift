@@ -3,8 +3,8 @@ import Export
 import Store
 import SwiftUI
 
-/// Выдача поиска по библиотеке (SPEC.md §2 п. 6, §3.6): реплики, решения, задачи и вопросы всех встреч,
-/// сгруппированные по встречам. Клик ведёт к реплике или к контексту проекта.
+/// Выдача поиска по библиотеке (SPEC.md §2 п. 6, §3.6): реплики всех встреч, сгруппированные
+/// по встречам. Клик ведёт к реплике.
 struct LibrarySearchView: View {
   @Bindable var model: AppModel
 
@@ -19,7 +19,7 @@ struct LibrarySearchView: View {
       } description: {
         Text(
           model.isSearchingLibrary
-            ? "Ищу «\(model.searchText)» по репликам, решениям, задачам и вопросам."
+            ? "Ищу «\(model.searchText)» по репликам всех встреч."
             : "Проверьте запрос или поищите по другой формулировке: ищутся начала слов.")
       }
       .accessibilityIdentifier("search.results")

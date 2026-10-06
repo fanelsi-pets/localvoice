@@ -6,52 +6,13 @@ import Foundation
 // Tests/ExportTests/Golden/obsidian_fixture.md. Модуль ничего не пишет на диск — только рендер
 // и имена; запись файлов делает вызывающий (Store/приложение).
 
-/// Итоги встречи для заметки: то, что дал follow-up (`ParsedFollowup`) или пользователь.
+/// Итоги встречи для заметки: последний сохранённый follow-up встречи целиком.
 public struct ObsidianNote: Hashable, Sendable {
-  public struct ActionItem: Hashable, Sendable {
-    public var task: String
-    public var assignee: String?
-    /// Срок ISO-днём («2026-09-10») или свободный текст — как есть в frontmatter.
-    public var due: String?
-    /// `open` или `done` (SPEC.md §3.6).
-    public var status: String
+  /// Markdown follow-up; `nil` — follow-up к встрече не сохраняли.
+  public var followup: String?
 
-    public init(task: String, assignee: String? = nil, due: String? = nil, status: String = "open")
-    {
-      self.task = task
-      self.assignee = assignee
-      self.due = due
-      self.status = status
-    }
-
-    public var isDone: Bool { status.lowercased() == "done" }
-  }
-
-  public struct Decision: Hashable, Sendable {
-    public var text: String
-    public var timestamp: Double?
-
-    public init(text: String, timestamp: Double? = nil) {
-      self.text = text
-      self.timestamp = timestamp
-    }
-  }
-
-  public var decisions: [Decision]
-  public var actionItems: [ActionItem]
-  public var questions: [String]
-  public var summary: String?
-
-  public init(
-    decisions: [Decision] = [],
-    actionItems: [ActionItem] = [],
-    questions: [String] = [],
-    summary: String? = nil
-  ) {
-    self.decisions = decisions
-    self.actionItems = actionItems
-    self.questions = questions
-    self.summary = summary
+  public init(followup: String? = nil) {
+    self.followup = followup
   }
 }
 
@@ -118,12 +79,6 @@ public enum ObsidianVaultExporter {
     )
     lines.append(contentsOf: list("attendees", attendees(transcript).map(quoted)))
     lines.append(contentsOf: map("speaker_map", speakerMap(transcript)))
-    lines.append(contentsOf: list("decisions", note.decisions.map { quoted($0.text) }))
-    lines.append(contentsOf: actionItems(note.actionItems))
-    lines.append(contentsOf: list("questions", note.questions.map(quoted)))
-    if let summary = TranscribeFullExporter.nonEmpty(note.summary) {
-      lines.append("summary: \(quoted(summary))")
-    }
     lines.append("source: \(quoted(transcript.audio.fileName))")
     lines.append("engines: \(quoted(engines(transcript)))")
     lines.append("generator: \(quoted("MeetingScribe"))")
@@ -161,19 +116,6 @@ public enum ObsidianVaultExporter {
 
   private static func map(_ key: String, _ pairs: [(String, String)]) -> [String] {
     pairs.isEmpty ? ["\(key): {}"] : ["\(key):"] + pairs.map { "  \($0.0): \($0.1)" }
-  }
-
-  private static func actionItems(_ items: [ObsidianNote.ActionItem]) -> [String] {
-    guard !items.isEmpty else { return ["action_items: []"] }
-    var lines = ["action_items:"]
-    for item in items {
-      lines.append("  - task: \(quoted(item.task))")
-      lines.append(
-        "    assignee: \(TranscribeFullExporter.nonEmpty(item.assignee).map(quoted) ?? "null")")
-      lines.append("    due: \(TranscribeFullExporter.nonEmpty(item.due).map(quoted) ?? "null")")
-      lines.append("    status: \(quoted(item.isDone ? "done" : "open"))")
-    }
-    return lines
   }
 
   /// Строка YAML в двойных кавычках: экранируются `\`, `"`, переносы и прочие управляющие символы.
@@ -214,52 +156,30 @@ public enum ObsidianVaultExporter {
       "Дата: \(transcript.meeting.date.map(formatter.string(from:)) ?? placeholder) "
         + "· Длительность: \(Timecode.hhmmss(transcript.audio.duration)) "
         + "· Проект: \(TranscribeFullExporter.nonEmpty(transcript.meeting.project) ?? placeholder)")
-    if let summary = TranscribeFullExporter.nonEmpty(note.summary) {
-      lines.append("")
-      lines.append("## Резюме")
-      lines.append(summary)
-    }
     lines.append("")
     lines.append("## Участники")
     lines.append(contentsOf: TranscribeFullExporter.participantLines(transcript))
-    lines.append("")
-    lines.append("## Решения")
-    lines.append(contentsOf: bullets(note.decisions.map(line(for:)), marker: "- "))
-    lines.append("")
-    lines.append("## Задачи")
-    lines.append(contentsOf: taskLines(note.actionItems))
-    lines.append("")
-    lines.append("## Открытые вопросы")
-    lines.append(contentsOf: bullets(note.questions, marker: "- "))
+    if let followup = TranscribeFullExporter.nonEmpty(note.followup) {
+      lines.append("")
+      lines.append("## Follow-up")
+      lines.append(contentsOf: nested(followup))
+    }
     lines.append("")
     lines.append("## Транскрипт")
     lines.append(contentsOf: TranscribeFullExporter.transcriptLines(transcript, options: options))
     return lines
   }
 
-  /// `текст (00:41:12)` — таймкод в скобках, если он известен.
-  private static func line(for decision: ObsidianNote.Decision) -> String {
-    guard let text = TranscribeFullExporter.nonEmpty(decision.text) else { return "" }
-    guard let timestamp = decision.timestamp else { return text }
-    return "\(text) (\(Timecode.hhmmss(timestamp)))"
-  }
-
-  /// `- [ ] задача — Имя, до 2026-09-10`; выполненные — `- [x]`.
-  private static func taskLines(_ items: [ObsidianNote.ActionItem]) -> [String] {
-    let lines = items.compactMap { item -> String? in
-      guard let task = TranscribeFullExporter.nonEmpty(item.task) else { return nil }
-      let assignee = TranscribeFullExporter.nonEmpty(item.assignee)
-      let due = TranscribeFullExporter.nonEmpty(item.due).map { "до \($0)" }
-      let tail = [assignee, due].compactMap { $0 }.joined(separator: ", ")
-      let text = tail.isEmpty ? task : "\(task) — \(tail)"
-      return "- [\(item.isDone ? "x" : " ")] \(text)"
+  /// Follow-up внутри заметки: его заголовки опускаются на два уровня («# Follow-up — …» → «###»),
+  /// чтобы не спорить с заголовком заметки и разделом «## Follow-up».
+  private static func nested(_ markdown: String) -> [String] {
+    var inCode = false
+    return markdown.components(separatedBy: .newlines).map { line in
+      if line.hasPrefix("```") { inCode.toggle() }
+      guard !inCode, line.hasPrefix("#") else { return line }
+      let level = line.prefix { $0 == "#" }.count
+      guard line.dropFirst(level).hasPrefix(" ") else { return line }  // #тег, а не заголовок
+      return String(repeating: "#", count: min(level + 2, 6)) + line.dropFirst(level)
     }
-    return lines.isEmpty ? ["- \(TranscribeFullExporter.placeholder)"] : lines
-  }
-
-  private static func bullets(_ items: [String], marker: String) -> [String] {
-    let items = items.compactMap(TranscribeFullExporter.nonEmpty)
-    guard !items.isEmpty else { return ["- \(TranscribeFullExporter.placeholder)"] }
-    return items.map { marker + $0 }
   }
 }

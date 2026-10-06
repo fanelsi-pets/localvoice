@@ -4,13 +4,20 @@ import Foundation
 import LocalLLM
 import Observation
 
-/// Генерация follow-up локальной моделью (SPEC.md §3.6). Признаки живости — растущий текст ответа,
+/// Генерация follow-up и его перевод на другой язык (SPEC.md §3.6). Признаки живости — растущий текст ответа,
 /// счётчик символов и прошедшее время (SPEC.md §3.7 п. 4): сколько всего напишет модель, неизвестно,
 /// поэтому определённой полосы здесь быть не может, а неопределённая «крутилка» запрещена.
 /// Живёт в `AppModel`, а не во вью: диалог можно закрыть, генерация продолжится.
 @Observable
 public final class FollowupGenerationController {
+  /// Что просят у модели: написать follow-up по транскрипту или перевести готовый.
+  public enum Kind: Sendable {
+    case generation
+    case translation
+  }
+
   public private(set) var isRunning = false
+  public private(set) var kind: Kind = .generation
   /// Накопленный ответ модели.
   public private(set) var text = ""
   /// «0:42» — прошедшее время, обновляется раз в секунду.
@@ -37,9 +44,10 @@ public final class FollowupGenerationController {
   }
 
   /// Запускает поток кусков ответа генератора — локальной модели или провайдера хоста (ADR-010).
-  public func start(prompt: String, generator: any FollowupGenerating) {
+  public func start(prompt: String, generator: any FollowupGenerating, kind: Kind = .generation) {
     guard !isRunning else { return }
     isRunning = true
+    self.kind = kind
     text = ""
     characterCount = 0
     errorText = nil
@@ -104,7 +112,12 @@ public final class FollowupGenerationController {
 
   /// «Генерация · прошло 0:42 · 1 234 символа» — строка живости для диалога.
   public var statusText: String {
-    String(localized: "Генерация · прошло \(elapsedText) · \(characterCount) символов")
+    switch kind {
+    case .generation:
+      String(localized: "Генерация · прошло \(elapsedText) · \(characterCount) символов")
+    case .translation:
+      String(localized: "Перевод · прошло \(elapsedText) · \(characterCount) символов")
+    }
   }
 }
 
@@ -117,22 +130,10 @@ extension AppModel {
     return LocalLLMFollowupGenerator(configuration: settings.localLLMConfiguration)
   }
 
-  /// «Создать follow-up»: промпт — инструкция владельца проекта на выбранном языке
-  /// (`FollowupGenerationPrompt`) плюс TranscribeFull без собственной инструкции экспорта. Транскрипт
-  /// уходит только выбранному генератору.
+  /// «Создать follow-up»: промпт — инструкция на выбранном языке (`FollowupGenerationPrompt`) плюс
+  /// TranscribeFull без собственной инструкции экспорта. Транскрипт уходит только выбранному генератору.
   public func startFollowupGeneration(meetingID: UUID) {
-    // Без генератора хоста и с выключенной локальной моделью запуск (⌘-команда, тест) объясняет, что включить.
-    let generator =
-      activeFollowupGenerator
-      ?? LocalLLMFollowupGenerator(configuration: settings.localLLMConfiguration)
-    guard generator.isAvailable else {
-      alert = AppAlert(
-        title: generator is LocalLLMFollowupGenerator
-          ? String(localized: "Локальная модель не настроена")
-          : String(localized: "Генератор недоступен"),
-        message: generator.unavailableReason)
-      return
-    }
+    guard let generator = availableFollowupGenerator() else { return }
     guard let transcript = renderMarkdown(for: meetingID, includeFollowupPrompt: false) else {
       alert = AppAlert(
         title: String(localized: "Нечего отправлять"),
@@ -143,5 +144,34 @@ extension AppModel {
     let prompt = FollowupGenerationPrompt.render(
       language: settings.followupLanguage, transcript: transcript)
     followupGeneration.start(prompt: prompt, generator: generator)
+  }
+
+  /// Смена языка готового follow-up: отдельный запрос на точный перевод текста, а не новая генерация —
+  /// содержание и структура остаются теми же, что уже прочитал и, возможно, поправил пользователь.
+  /// `false` — генератора нет (об этом сообщает `alert`).
+  @discardableResult
+  public func startFollowupTranslation(_ text: String, to language: FollowupLanguage) -> Bool {
+    guard let generator = availableFollowupGenerator() else { return false }
+    followupGeneration.start(
+      prompt: FollowupGenerationPrompt.translation(of: text, to: language),
+      generator: generator, kind: .translation)
+    return true
+  }
+
+  /// Генератор, готовый к запросу; иначе `alert` объясняет, что включить. Без генератора хоста
+  /// и с выключенной локальной моделью (⌘-команда, тест) — подсказка про локальную модель.
+  private func availableFollowupGenerator() -> (any FollowupGenerating)? {
+    let generator =
+      activeFollowupGenerator
+      ?? LocalLLMFollowupGenerator(configuration: settings.localLLMConfiguration)
+    guard generator.isAvailable else {
+      alert = AppAlert(
+        title: generator is LocalLLMFollowupGenerator
+          ? String(localized: "Локальная модель не настроена")
+          : String(localized: "Генератор недоступен"),
+        message: generator.unavailableReason)
+      return nil
+    }
+    return generator
   }
 }

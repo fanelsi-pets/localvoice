@@ -4,8 +4,8 @@ import Store
 import SwiftUI
 
 /// История follow-up проекта (SPEC.md §3.6, DESIGN.md §5): слева — follow-up по хронологии встреч,
-/// справа — выбранный целиком: резюме, разобранные пункты и полный текст ответа модели. Так follow-up
-/// прошлой и текущей встречи лежат рядом и сравниваются по датам и названиям.
+/// справа — выбранный целиком, документом. Так follow-up прошлой и текущей встречи лежат рядом
+/// и сравниваются по датам и названиям.
 struct FollowupHistorySheet: View {
   @Bindable var model: AppModel
   let projectID: UUID
@@ -30,7 +30,7 @@ struct FollowupHistorySheet: View {
           Label("Follow-up пока нет", systemImage: "text.badge.checkmark")
         } description: {
           Text(
-            "Вставьте ответ модели на TranscribeFull через меню «Follow-up» в шапке встречи — текст сохранится здесь целиком."
+            "Создайте follow-up встречи или вставьте ответ модели на TranscribeFull — он сохранится здесь целиком."
           )
         }
       } else {
@@ -40,7 +40,7 @@ struct FollowupHistorySheet: View {
               row(entry, position: index).tag(entry.id)
             }
           }
-          .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
+          .frame(minWidth: 240, idealWidth: 280, maxWidth: 320)
           .accessibilityIdentifier("followupHistory.list")
           detail(entries: entries)
         }
@@ -57,11 +57,11 @@ struct FollowupHistorySheet: View {
     .alert(
       "Удалить follow-up?", isPresented: deletingBinding, presenting: deleting
     ) { entry in
-      Button("Удалить", role: .destructive) { model.removeFollowupImport(entry.id) }
+      Button("Удалить", role: .destructive) { model.removeFollowup(entry.id) }
       Button("Отмена", role: .cancel) {}
     } message: { entry in
       Text(
-        "Follow-up встречи «\(entry.meetingTitle)» удалится вместе с решениями, задачами и вопросами, добавленными из него."
+        "Follow-up встречи «\(entry.meetingTitle)» удалится из истории проекта."
       )
     }
     .accessibilityElement(children: .contain)
@@ -72,13 +72,11 @@ struct FollowupHistorySheet: View {
 
   private func row(_ entry: FollowupTimelineEntry, position: Int) -> some View {
     VStack(alignment: .leading, spacing: 2) {
-      Text(entry.meetingTitle).lineLimit(1)
+      Text(entry.meetingTitle).lineLimit(2)
       Text(dateLine(entry))
         .font(.caption)
         .foregroundStyle(.secondary)
-      Text(entry.countsText)
-        .font(.caption)
-        .foregroundStyle(.secondary)
+        .lineLimit(1)
     }
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("followupHistory.row.\(position)")
@@ -99,9 +97,6 @@ struct FollowupHistorySheet: View {
 
   @ViewBuilder private func detail(entries: [FollowupTimelineEntry]) -> some View {
     if let entry = entries.first(where: { $0.id == selectedID }) {
-      let decisions = model.library.decisions.filter { $0.followupID == entry.id }
-      let actions = model.library.actionItems.filter { $0.followupID == entry.id }
-      let questions = model.library.questions.filter { $0.followupID == entry.id }
       ScrollView {
         VStack(alignment: .leading, spacing: 10) {
           Text(entry.meetingTitle).font(.headline)
@@ -115,70 +110,20 @@ struct FollowupHistorySheet: View {
           )
           .font(.caption)
           .foregroundStyle(.secondary)
-          if let summary = entry.followup.summary, !summary.isEmpty {
-            section("Резюме") { Text(summary) }
-          }
-          if !decisions.isEmpty {
-            section("Решения") {
-              ForEach(decisions) { decision in
-                Text(
-                  decision.timestamp.map { "\(decision.text) (\(Timecode.hhmmss($0)))" }
-                    ?? decision.text)
-              }
-            }
-          }
-          if !actions.isEmpty {
-            section("Задачи") {
-              ForEach(actions) { item in
-                Label {
-                  Text(actionLine(item)).strikethrough(!item.isOpen)
-                } icon: {
-                  Image(systemName: item.isOpen ? "circle" : "checkmark.circle.fill")
-                    .foregroundStyle(item.isOpen ? Color.secondary : Color.green)
-                }
-              }
-            }
-          }
-          if !questions.isEmpty {
-            section("Вопросы") {
-              ForEach(questions) { question in
-                Text(question.text).strikethrough(!question.isOpen)
-              }
-            }
-          }
+          Divider()
           if let raw = entry.followup.rawText, !raw.isEmpty {
-            section("Текст ответа") {
-              Text(raw)
-                .font(.callout)
-                .textSelection(.enabled)
-                .accessibilityIdentifier("followupHistory.text")
-            }
+            MarkdownDocumentView(markdown: raw)
+              .accessibilityIdentifier("followupHistory.text")
           }
         }
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .textSelection(.enabled)
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .accessibilityIdentifier("followupHistory.detail")
     } else {
       ContentUnavailableView("Выберите follow-up", systemImage: "text.badge.checkmark")
     }
-  }
-
-  private func section<Content: View>(
-    _ title: LocalizedStringKey, @ViewBuilder content: () -> Content
-  ) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title).font(.subheadline.weight(.semibold))
-      content()
-    }
-  }
-
-  /// «Прислать смету — Иван, до 2026-09-10».
-  private func actionLine(_ item: ActionItemRecord) -> String {
-    var tail: [String] = []
-    if let owner = item.owner { tail.append(owner) }
-    if let due = item.dueTitle { tail.append(String(localized: "до \(due)")) }
-    return tail.isEmpty ? item.text : "\(item.text) — \(tail.joined(separator: ", "))"
   }
 
   // MARK: - Футер

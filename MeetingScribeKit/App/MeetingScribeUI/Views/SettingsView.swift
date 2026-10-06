@@ -441,7 +441,7 @@ struct PeopleSettings: View {
   }
 }
 
-/// Follow-up (SPEC.md §3.6): контекст проекта в экспорте и необязательная локальная модель.
+/// Follow-up (SPEC.md §3.6): необязательная локальная модель для генерации.
 struct FollowupSettings: View {
   @Bindable var settings: AppSettings
   /// Название генератора хоста (ADR-010), если он задан, — подпись «Follow-up создаёт: …».
@@ -454,14 +454,6 @@ struct FollowupSettings: View {
 
   var body: some View {
     Form {
-      Section("Экспорт") {
-        Toggle("Включать контекст проекта в TranscribeFull", isOn: $settings.includeProjectContext)
-        Text(
-          "В шапку экспорта добавляются решения, открытые задачи и вопросы предыдущих встреч того же проекта — внешняя модель видит, о чём договорились раньше."
-        )
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      }
       Section("Генерация follow-up") {
         Picker("Язык follow-up", selection: $settings.followupLanguage) {
           ForEach(FollowupLanguage.allCases, id: \.self) { language in

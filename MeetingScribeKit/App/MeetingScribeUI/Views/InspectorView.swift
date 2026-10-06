@@ -3,7 +3,7 @@ import Export
 import Store
 import SwiftUI
 
-/// Инспектор (DESIGN.md §2, §4): спикеры, сведения о прогоне, контекст проекта.
+/// Инспектор (DESIGN.md §2, §4): спикеры, сведения о прогоне, follow-up проекта.
 struct InspectorView: View {
   @Bindable var model: AppModel
 
@@ -24,14 +24,14 @@ struct InspectorView: View {
           SpeakersInspector(model: model, record: record)
         case .details:
           DetailsInspector(model: model, record: record)
-        case .projectContext:
-          ProjectContextInspector(model: model, record: record)
+        case .followups:
+          FollowupsInspector(model: model, record: record)
         }
       } else {
         ContentUnavailableView(
           "Выберите встречу", systemImage: "sidebar.left",
           description: Text(
-            "Спикеры, сведения и контекст проекта появятся после выбора встречи."))
+            "Спикеры, сведения и follow-up появятся после выбора встречи."))
       }
       Spacer(minLength: 0)
     }

@@ -27036,6 +27036,535 @@
           }
         }
       }
+    },
+    "Follow-up встреч проекта по датам, целиком" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-ups of the project's meetings by date, in full"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up зустрічей проєкту за датами, повністю"
+          }
+        }
+      }
+    },
+    "Follow-up встречи «%@» удалится из истории проекта." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The follow-up of “%@” will be removed from the project history."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up зустрічі «%@» видалиться з історії проєкту."
+          }
+        }
+      }
+    },
+    "Follow-up хранятся в истории проекта. Выберите проект в диалоге follow-up или переместите встречу в проект из боковой панели." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-ups are kept in the project history. Choose a project in the follow-up dialog or move the meeting into a project from the sidebar."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up зберігаються в історії проєкту. Виберіть проєкт у діалозі follow-up або перемістіть зустріч до проєкту з бічної панелі."
+          }
+        }
+      }
+    },
+    "Follow-up хранятся в истории проекта: встреча переедет в выбранный проект." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-ups are kept in the project history: the meeting will move to the selected project."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up зберігаються в історії проєкту: зустріч переїде до вибраного проєкту."
+          }
+        }
+      }
+    },
+    "Follow-up хранятся в проекте: он собирает follow-up всех своих встреч в одну историю." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-ups live in a project: it collects the follow-ups of all its meetings into one history."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up зберігаються в проєкті: він збирає follow-up усіх своїх зустрічей в одну історію."
+          }
+        }
+      }
+    },
+    "Follow-up этого проекта пока нет. Создайте его моделью или вставьте ответ модели на TranscribeFull — он сохранится здесь." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This project has no follow-ups yet. Create one with the model or paste a model's answer to TranscribeFull — it will be saved here."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up цього проєкту поки немає. Створіть його моделлю або вставте відповідь моделі на TranscribeFull — він збережеться тут."
+          }
+        }
+      }
+    },
+    "Markdown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
+          }
+        }
+      }
+    },
+    "Вид" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вигляд"
+          }
+        }
+      }
+    },
+    "Вставить ответ модели на TranscribeFull и сохранить его в истории проекта" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste a model's answer to TranscribeFull and save it in the project history"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставити відповідь моделі на TranscribeFull і зберегти її в історії проєкту"
+          }
+        }
+      }
+    },
+    "Вставьте ответ модели на TranscribeFull — он сохранится в истории проекта." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste a model's answer to TranscribeFull — it will be saved in the project history."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставте відповідь моделі на TranscribeFull — вона збережеться в історії проєкту."
+          }
+        }
+      }
+    },
+    "Документ" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Document"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Документ"
+          }
+        }
+      }
+    },
+    "Заменить текст ответом модели из буфера обмена" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace the text with a model answer from the clipboard"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Замінити текст відповіддю моделі з буфера обміну"
+          }
+        }
+      }
+    },
+    "История follow-up проекта будет удалена; встречи останутся в библиотеке без проекта." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The project's follow-up history will be deleted; its meetings stay in the library without a project."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Історію follow-up проєкту буде видалено; зустрічі залишаться в бібліотеці без проєкту."
+          }
+        }
+      }
+    },
+    "Ищу «%@» по репликам всех встреч." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching all meetings' lines for “%@”."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шукаю «%@» у репліках усіх зустрічей."
+          }
+        }
+      }
+    },
+    "Модель пишет follow-up…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The model is writing the follow-up…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель пише follow-up…"
+          }
+        }
+      }
+    },
+    "Модель: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model: %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель: %@"
+          }
+        }
+      }
+    },
+    "На каком языке писать follow-up" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language to write the follow-up in"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Якою мовою писати follow-up"
+          }
+        }
+      }
+    },
+    "Отправить транскрипт модели и сохранить её ответ" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send the transcript to the model and keep its answer"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Надіслати транскрипт моделі та зберегти її відповідь"
+          }
+        }
+      }
+    },
+    "Перевод · прошло %@ · %lld символов" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Translating · %@ elapsed · %lld character"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Translating · %@ elapsed · %lld characters"
+                }
+              }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Переклад · минуло %@ · %lld символ"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Переклад · минуло %@ · %lld символи"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Переклад · минуло %@ · %lld символів"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Переклад · минуло %@ · %lld символа"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Поиск по всем встречам" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search all meetings"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошук по всіх зустрічах"
+          }
+        }
+      }
+    },
+    "Показать follow-up в инспекторе" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Follow-up in Inspector"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати follow-up в інспекторі"
+          }
+        }
+      }
+    },
+    "Скопировать" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіювати"
+          }
+        }
+      }
+    },
+    "Смена языка переводит этот follow-up" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changing the language translates this follow-up"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зміна мови перекладає цей follow-up"
+          }
+        }
+      }
+    },
+    "Создайте follow-up встречи или вставьте ответ модели на TranscribeFull — он сохранится здесь целиком." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a meeting follow-up or paste a model's answer to TranscribeFull — it will be saved here in full."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Створіть follow-up зустрічі або вставте відповідь моделі на TranscribeFull — він збережеться тут повністю."
+          }
+        }
+      }
+    },
+    "Создайте follow-up моделью или вставьте ответ внешней модели на TranscribeFull." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a follow-up with the model or paste an external model's answer to TranscribeFull."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Створіть follow-up моделлю або вставте відповідь зовнішньої моделі на TranscribeFull."
+          }
+        }
+      }
+    },
+    "Создать заново" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create Again"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Створити заново"
+          }
+        }
+      }
+    },
+    "Спикеры, сведения и follow-up появятся после выбора встречи." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speakers, details and follow-ups appear once you select a meeting."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спікери, відомості та follow-up з’являться після вибору зустрічі."
+          }
+        }
+      }
+    },
+    "Текст follow-up в Markdown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow-up text in Markdown"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст follow-up у Markdown"
+          }
+        }
+      }
+    },
+    "Обычно это занимает до минуты." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This usually takes up to a minute."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зазвичай це займає до хвилини."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

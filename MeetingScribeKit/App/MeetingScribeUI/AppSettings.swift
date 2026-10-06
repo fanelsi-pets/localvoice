@@ -40,8 +40,6 @@ public final class AppSettings {
     /// Пороги сопоставления голосов (SPEC.md §3.4): автоприсвоение и предложение.
     public static let voiceAutoThreshold = "voiceAutoThreshold"
     public static let voiceSuggestThreshold = "voiceSuggestThreshold"
-    /// Фаза 4: контекст проекта в шапке TranscribeFull (SPEC.md §3.6).
-    public static let includeProjectContext = "includeProjectContext"
     /// Локальная модель для генерации follow-up: по умолчанию выключена (SPEC.md §3.6).
     public static let localLLMEnabled = "localLLMEnabled"
     public static let localLLMBaseURL = "localLLMBaseURL"
@@ -149,11 +147,6 @@ public final class AppSettings {
   /// Порог предложения с подтверждением: 0.55 по умолчанию.
   public var voiceSuggestThreshold: Double {
     didSet { defaults.set(voiceSuggestThreshold, forKey: Key.voiceSuggestThreshold) }
-  }
-  /// Включать секцию «Контекст проекта» в TranscribeFull (SPEC.md §3.6). По умолчанию включено:
-  /// ради этой секции и существует память проекта.
-  public var includeProjectContext: Bool {
-    didSet { defaults.set(includeProjectContext, forKey: Key.includeProjectContext) }
   }
   /// Генерировать follow-up локальной моделью (SPEC.md §3.6: «по умолчанию выключено»).
   public var localLLMEnabled: Bool {
@@ -264,8 +257,6 @@ public final class AppSettings {
       forKey: Key.voiceAutoThreshold, default: standard.autoAssign, in: defaults)
     voiceSuggestThreshold = Self.double(
       forKey: Key.voiceSuggestThreshold, default: standard.suggest, in: defaults)
-    includeProjectContext = Self.bool(
-      forKey: Key.includeProjectContext, default: true, in: defaults)
     localLLMEnabled = defaults.bool(forKey: Key.localLLMEnabled)
     localLLMBaseURL =
       defaults.string(forKey: Key.localLLMBaseURL)?.nilIfEmpty

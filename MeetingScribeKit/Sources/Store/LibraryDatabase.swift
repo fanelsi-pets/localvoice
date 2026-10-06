@@ -10,7 +10,9 @@ import Voices
 //   день, поэтому конверсия дат здесь ручная и точная);
 // - скалярные поля — колонки, сложные (статус с ассоциированными значениями, сопоставления спикеров,
 //   образцы голоса) — JSON-текст;
-// - внешних ключей нет: записи памяти проекта переживают удаление встречи (SPEC.md §3.6);
+// - внешних ключей нет: follow-up проекта переживают удаление встречи (SPEC.md §3.6);
+// - таблицы `decisions`, `action_items`, `questions` и индекс `memory_index` создаются схемой v1, но
+//   больше не читаются и не пишутся: память проекта убрана, данные прежних версий остаются в файле;
 // - `position` — порядок записи в массиве `Library`, чтобы round-trip не переставлял записи местами.
 
 /// Битая строка индекса: без обязательного поля запись собрать нельзя.
@@ -188,17 +190,10 @@ enum LibraryDatabase {
   }
 
   static let utteranceIndex = "utterance_index"
+  /// Индекс записей памяти проекта из схемы v1: создаётся, но не используется.
   static let memoryIndex = "memory_index"
-  /// Номер колонки `search_text` для `highlight()`: у обоих индексов она последняя.
+  /// Номер колонки `search_text` для `highlight()`: последняя колонка индекса.
   static let utteranceSearchColumn = 6
-  static let memorySearchColumn = 5
-
-  /// Род записи памяти в `memory_index`.
-  enum MemoryKind: String {
-    case decision
-    case action
-    case question
-  }
 
   // MARK: - Чтение
 
@@ -232,9 +227,6 @@ enum LibraryDatabase {
     library.projects = try rows("projects") { try project(from: $0) }
     library.meetings = try rows("meetings") { try meeting(from: $0, coder: coder) }
     library.people = try rows("people") { try person(from: $0, coder: coder) }
-    library.decisions = try rows("decisions") { try decision(from: $0) }
-    library.actionItems = try rows("action_items") { try actionItem(from: $0) }
-    library.questions = try rows("questions") { try question(from: $0) }
     library.followups = try rows("followups") { try followup(from: $0) }
     return LibraryRead(library: library, warnings: warnings)
   }
@@ -248,10 +240,7 @@ enum LibraryDatabase {
   /// Пусты ли все таблицы записей: так распознаётся база, оставшаяся от прерванного переноса
   /// `library.json` (индекс реплик не в счёт — без записей он бесполезен).
   static func isEmpty(_ db: Database) throws -> Bool {
-    for table in [
-      "projects", "meetings", "people", "decisions", "action_items", "questions",
-      "followups",
-    ] {
+    for table in ["projects", "meetings", "people", "followups"] {
       let count = try Int.fetchOne(db, sql: "SELECT count(*) FROM \(table)") ?? 0
       if count > 0 { return false }
     }
@@ -319,71 +308,13 @@ enum LibraryDatabase {
       try db.execute(
         sql: """
           INSERT OR REPLACE INTO followups
-            (id, project_id, meeting_id, imported_at, source, method, summary, raw_text, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, project_id, meeting_id, imported_at, source, raw_text, position)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
           """,
         arguments: [
           record.id.uuidString, record.projectID.uuidString, record.meetingID.uuidString,
-          record.importedAt.timeIntervalSince1970, record.source.rawValue, record.method,
-          record.summary, record.rawText, position,
-        ])
-    }
-
-    try applyMemory(
-      plan(library.decisions, previous: previous?.decisions), table: "decisions", kind: .decision,
-      in: db
-    ) { record, position, db in
-      try db.execute(
-        sql: """
-          INSERT OR REPLACE INTO decisions
-            (id, project_id, meeting_id, followup_id, text, timestamp, meeting_date, created_at,
-             order_index, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          """,
-        arguments: [
-          record.id.uuidString, record.projectID.uuidString, record.meetingID?.uuidString,
-          record.followupID?.uuidString, record.text, record.timestamp,
-          record.meetingDate?.timeIntervalSince1970, record.createdAt.timeIntervalSince1970,
-          record.order, position,
-        ])
-    }
-
-    try applyMemory(
-      plan(library.actionItems, previous: previous?.actionItems), table: "action_items",
-      kind: .action, in: db
-    ) { record, position, db in
-      try db.execute(
-        sql: """
-          INSERT OR REPLACE INTO action_items
-            (id, project_id, meeting_id, followup_id, text, owner, owner_person_id, due, due_text,
-             status, meeting_date, created_at, completed_at, order_index, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          """,
-        arguments: [
-          record.id.uuidString, record.projectID.uuidString, record.meetingID?.uuidString,
-          record.followupID?.uuidString, record.text, record.owner,
-          record.ownerPersonID?.uuidString, record.due, record.dueText, record.status.rawValue,
-          record.meetingDate?.timeIntervalSince1970, record.createdAt.timeIntervalSince1970,
-          record.completedAt?.timeIntervalSince1970, record.order, position,
-        ])
-    }
-
-    try applyMemory(
-      plan(library.questions, previous: previous?.questions), table: "questions", kind: .question,
-      in: db
-    ) { record, position, db in
-      try db.execute(
-        sql: """
-          INSERT OR REPLACE INTO questions
-            (id, project_id, meeting_id, followup_id, text, status, meeting_date, created_at,
-             answered_at, order_index, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          """,
-        arguments: [
-          record.id.uuidString, record.projectID.uuidString, record.meetingID?.uuidString,
-          record.followupID?.uuidString, record.text, record.status.rawValue,
-          record.meetingDate?.timeIntervalSince1970, record.createdAt.timeIntervalSince1970,
-          record.answeredAt?.timeIntervalSince1970, record.order, position,
+          record.importedAt.timeIntervalSince1970, record.source.rawValue, record.rawText,
+          position,
         ])
     }
   }
@@ -473,59 +404,6 @@ enum LibraryDatabase {
     for (element, position) in sync.upserts { try insert(element, position, db) }
   }
 
-  /// То же для записей памяти: вместе со строкой таблицы обновляется строка `memory_index`.
-  static func applyMemory<Element: MemoryRecord>(
-    _ sync: TableSync<Element>,
-    table: String,
-    kind: MemoryKind,
-    in db: Database,
-    insert: (Element, Int, Database) throws -> Void
-  ) throws {
-    for id in sync.deletions {
-      try db.execute(sql: "DELETE FROM \(table) WHERE id = ?", arguments: [id.uuidString])
-      try removeMemoryIndex(itemID: id, in: db)
-    }
-    if sync.deleteMissing {
-      try deleteMissing(table: table, column: "id", keptIDs: sync.keptIDs, in: db)
-      try deleteMissingMemoryIndex(kind: kind, keptIDs: sync.keptIDs, in: db)
-    }
-    for (element, position) in sync.upserts {
-      try insert(element, position, db)
-      try removeMemoryIndex(itemID: element.id, in: db)
-      let text = LibraryStore.normalizedText(element.text)
-      guard !text.isEmpty else { continue }
-      try db.execute(
-        sql: """
-          INSERT INTO memory_index (item_id, kind, project_id, meeting_id, text, search_text)
-          VALUES (?, ?, ?, ?, ?, ?)
-          """,
-        arguments: [
-          element.id.uuidString, kind.rawValue, element.projectID.uuidString,
-          element.meetingID?.uuidString, text, LibraryStore.searchText(text),
-        ])
-    }
-  }
-
-  static func removeMemoryIndex(itemID: UUID, in db: Database) throws {
-    try db.execute(
-      sql: "DELETE FROM memory_index WHERE item_id = ?", arguments: [itemID.uuidString])
-  }
-
-  private static func deleteMissingMemoryIndex(kind: MemoryKind, keptIDs: [UUID], in db: Database)
-    throws
-  {
-    guard !keptIDs.isEmpty else {
-      try db.execute(sql: "DELETE FROM memory_index WHERE kind = ?", arguments: [kind.rawValue])
-      return
-    }
-    let placeholders = Array(repeating: "?", count: keptIDs.count).joined(separator: ", ")
-    var arguments: [(any DatabaseValueConvertible)?] = [kind.rawValue]
-    arguments.append(contentsOf: keptIDs.map(\.uuidString))
-    try db.execute(
-      sql: "DELETE FROM memory_index WHERE kind = ? AND item_id NOT IN (\(placeholders))",
-      arguments: StatementArguments(arguments))
-  }
-
   private static func deleteMissing(table: String, column: String, keptIDs: [UUID], in db: Database)
     throws
   {
@@ -590,56 +468,6 @@ enum LibraryDatabase {
       updatedAt: try requiredDate(row, "updated_at", table: table))
   }
 
-  private static func decision(from row: Row) throws -> DecisionRecord {
-    let table = "decisions"
-    return DecisionRecord(
-      id: try id(row, "id", table: table),
-      projectID: try id(row, "project_id", table: table),
-      meetingID: uuid(row, "meeting_id"),
-      followupID: uuid(row, "followup_id"),
-      text: row["text"] ?? "",
-      timestamp: row["timestamp"],
-      meetingDate: date(row, "meeting_date"),
-      createdAt: try requiredDate(row, "created_at", table: table),
-      order: row["order_index"] ?? 0)
-  }
-
-  private static func actionItem(from row: Row) throws -> ActionItemRecord {
-    let table = "action_items"
-    let status: String? = row["status"]
-    return ActionItemRecord(
-      id: try id(row, "id", table: table),
-      projectID: try id(row, "project_id", table: table),
-      meetingID: uuid(row, "meeting_id"),
-      followupID: uuid(row, "followup_id"),
-      text: row["text"] ?? "",
-      owner: row["owner"],
-      ownerPersonID: uuid(row, "owner_person_id"),
-      due: row["due"],
-      dueText: row["due_text"],
-      status: status.flatMap(ActionStatus.init(rawValue:)) ?? .open,
-      meetingDate: date(row, "meeting_date"),
-      createdAt: try requiredDate(row, "created_at", table: table),
-      completedAt: date(row, "completed_at"),
-      order: row["order_index"] ?? 0)
-  }
-
-  private static func question(from row: Row) throws -> QuestionRecord {
-    let table = "questions"
-    let status: String? = row["status"]
-    return QuestionRecord(
-      id: try id(row, "id", table: table),
-      projectID: try id(row, "project_id", table: table),
-      meetingID: uuid(row, "meeting_id"),
-      followupID: uuid(row, "followup_id"),
-      text: row["text"] ?? "",
-      status: status.flatMap(QuestionStatus.init(rawValue:)) ?? .open,
-      meetingDate: date(row, "meeting_date"),
-      createdAt: try requiredDate(row, "created_at", table: table),
-      answeredAt: date(row, "answered_at"),
-      order: row["order_index"] ?? 0)
-  }
-
   private static func followup(from row: Row) throws -> FollowupRecord {
     let table = "followups"
     let source: String? = row["source"]
@@ -649,8 +477,6 @@ enum LibraryDatabase {
       meetingID: try id(row, "meeting_id", table: table),
       importedAt: try requiredDate(row, "imported_at", table: table),
       source: source.flatMap(FollowupSource.init(rawValue:)) ?? .pasted,
-      method: row["method"],
-      summary: row["summary"],
       rawText: row["raw_text"])
   }
 

@@ -29,13 +29,13 @@ nonisolated public enum SidebarSelection: Hashable, Sendable {
 nonisolated public enum InspectorTab: String, CaseIterable, Hashable, Sendable {
   case speakers
   case details
-  case projectContext
+  case followups
 
   public var title: String {
     switch self {
     case .speakers: String(localized: "Спикеры")
     case .details: String(localized: "Сведения")
-    case .projectContext: String(localized: "Контекст проекта")
+    case .followups: String(localized: "Follow-up")
     }
   }
 }
@@ -286,7 +286,7 @@ public final class AppModel {
   public var searchScope: SearchScope = .library {
     didSet { if searchScope != oldValue { searchScopeChanged() } }
   }
-  /// Результаты поиска по библиотеке (реплики, решения, задачи, вопросы).
+  /// Результаты поиска по библиотеке (реплики всех встреч).
   public internal(set) var libraryResults: [LibrarySearchResult] = []
   /// Запрос к базе ещё выполняется (миллисекунды — подпись, а не индикатор).
   public internal(set) var isSearchingLibrary = false
@@ -658,7 +658,7 @@ public final class AppModel {
     applyPendingNavigation()
   }
 
-  /// Переход, запрошенный до загрузки транскрипта (запись памяти, результат поиска), выполняется,
+  /// Переход, запрошенный до загрузки транскрипта (результат поиска), выполняется,
   /// как только транскрипт прочитан: до этого строк нет и ждать нечего.
   private func applyPendingNavigation() {
     guard let meetingID = selectedMeetingID, transcripts[meetingID] != nil else { return }
@@ -1115,7 +1115,7 @@ public final class AppModel {
       message:
         String(
           localized:
-            "Решения, задачи и вопросы проекта будут удалены; встречи останутся в библиотеке без проекта."
+            "История follow-up проекта будет удалена; встречи останутся в библиотеке без проекта."
         ),
       kind: .confirmDeleteProject(id))
   }
@@ -1149,7 +1149,7 @@ public final class AppModel {
     var options = TranscribeFullOptions(
       tenths: settings.tenthsInTimecodes,
       markOverlap: settings.markOverlap,
-      projectContext: settings.includeProjectContext ? projectContext(for: id) : nil,
+      followupLanguage: settings.followupLanguage,
       processedAt: record?.processedAt,
       timeZone: Self.contextTimeZone)
     // Для генерации инструкция экспорта не нужна: промпт генератора задаёт свою.

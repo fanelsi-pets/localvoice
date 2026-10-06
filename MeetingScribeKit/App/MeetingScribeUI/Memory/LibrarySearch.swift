@@ -19,7 +19,7 @@ nonisolated public enum SearchScope: String, CaseIterable, Hashable, Sendable {
   public var prompt: String {
     switch self {
     case .meeting: String(localized: "Поиск по репликам")
-    case .library: String(localized: "Поиск по всем встречам, решениям и задачам")
+    case .library: String(localized: "Поиск по всем встречам")
     }
   }
 }
@@ -51,9 +51,6 @@ nonisolated public struct LibrarySearchResult: Identifiable, Hashable, Sendable 
   public var systemImage: String {
     switch hit.kind {
     case .utterance: "text.quote"
-    case .decision: "checkmark.seal"
-    case .actionItem: "checkmark.square"
-    case .question: "questionmark.circle"
     }
   }
 
@@ -148,9 +145,6 @@ extension AppModel {
       speakerName =
         speakerID.flatMap { record?.speakerNames[$0] }
         ?? SpeakerStats.placeholderName(for: speakerID)
-    case .decision: kindTitle = String(localized: "Решение")
-    case .actionItem: kindTitle = String(localized: "Задача")
-    case .question: kindTitle = String(localized: "Вопрос")
     }
     return LibrarySearchResult(
       hit: hit,
@@ -160,8 +154,7 @@ extension AppModel {
       kindTitle: kindTitle)
   }
 
-  /// Переход по результату: реплика — к строке транскрипта (подсветка запроса остаётся, если он её
-  /// не прячет), запись памяти — к встрече с открытым инспектором «Контекст проекта».
+  /// Переход по результату — к строке транскрипта (подсветка запроса остаётся, если он её не прячет).
   public func open(_ result: LibrarySearchResult) {
     let query = searchText
     switch result.hit.kind {
@@ -186,40 +179,6 @@ extension AppModel {
       } else {
         goToTimecode(start)
       }
-    case .decision, .actionItem, .question:
-      openMemoryRecord(result)
     }
-  }
-
-  /// Запись памяти: открываем её встречу, а если встречу удалили — последнюю встречу того же проекта
-  /// (инспектор без встречи показал бы «Выберите встречу»). Если встреч у проекта не осталось,
-  /// объясняем, где запись живёт.
-  private func openMemoryRecord(_ result: LibrarySearchResult) {
-    if let meetingID = result.hit.meetingID, library.meeting(id: meetingID) != nil {
-      selectMeeting(meetingID)
-      searchScope = .meeting
-      searchText = ""
-      inspectorTab = .projectContext
-      isInspectorPresented = true
-      return
-    }
-    let projectID = result.hit.projectID
-    let latest =
-      projectID
-      .map { library.meetings(in: $0) }?
-      .max { ($0.date ?? $0.createdAt) < ($1.date ?? $1.createdAt) }
-    guard let latest else {
-      let name = projectID.flatMap { library.project(id: $0)?.name }
-      alert = AppAlert(
-        title: String(localized: "Встреча удалена"),
-        message: name.map { String(localized: "Запись осталась в памяти проекта «\($0)».") }
-          ?? String(localized: "Запись осталась в памяти проекта."))
-      return
-    }
-    selectMeeting(latest.id)
-    searchScope = .meeting
-    searchText = ""
-    inspectorTab = .projectContext
-    isInspectorPresented = true
   }
 }

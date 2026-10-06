@@ -129,7 +129,6 @@ nonisolated public struct ProblemReport: Sendable {
           "tenthsInTimecodes": settings.tenthsInTimecodes,
           "markOverlap": settings.markOverlap,
           "notifyOnCompletion": settings.notifyOnCompletion,
-          "includeProjectContext": settings.includeProjectContext,
           // Адрес и модель не переносятся: у локального сервера может быть имя машины пользователя.
           "localLLMEnabled": settings.localLLMEnabled,
           "onboardingCompleted": settings.onboardingCompleted,

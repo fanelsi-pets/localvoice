@@ -325,17 +325,8 @@ extension AppModel {
     String(localized: "Экспорт отменён: записано \(written) из \(total) заметок")
   }
 
-  /// Итоги встречи для заметки: решения, задачи и вопросы именно этой встречи плюс последнее резюме.
+  /// Итоги встречи для заметки: последний сохранённый follow-up этой встречи.
   func obsidianNote(for record: MeetingRecord) -> ObsidianNote {
-    ObsidianNote(
-      decisions: decisions(for: record.id).map {
-        ObsidianNote.Decision(text: $0.text, timestamp: $0.timestamp)
-      },
-      actionItems: actionItems(for: record.id).map {
-        ObsidianNote.ActionItem(
-          task: $0.text, assignee: $0.owner, due: $0.dueTitle, status: $0.status.rawValue)
-      },
-      questions: questions(for: record.id).map(\.text),
-      summary: library.followups(for: record.id).compactMap(\.summary).last)
+    ObsidianNote(followup: library.followups(for: record.id).compactMap(\.rawText).last)
   }
 }

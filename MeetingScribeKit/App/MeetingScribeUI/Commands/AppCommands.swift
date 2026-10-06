@@ -133,8 +133,8 @@ struct AppCommands: Commands {
       }
       .keyboardShortcut("2", modifiers: [.command, .option])
       .disabled(model.selectedMeeting == nil)
-      Button("Показать контекст проекта в инспекторе") {
-        model.inspectorTab = .projectContext
+      Button("Показать follow-up в инспекторе") {
+        model.inspectorTab = .followups
         model.isInspectorPresented = true
       }
       .keyboardShortcut("3", modifiers: [.command, .option])

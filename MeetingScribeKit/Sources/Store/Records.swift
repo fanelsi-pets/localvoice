@@ -245,8 +245,8 @@ public struct MeetingRecord: Identifiable, Hashable, Codable, Sendable {
   }
 }
 
-/// Индекс библиотеки: проекты, встречи, люди (голосовые профили, фаза 3) и память проекта — решения,
-/// задачи, вопросы, импорты follow-up (фаза 4). Порядок записей — порядок добавления; интерфейс сортирует сам.
+/// Индекс библиотеки: проекты, встречи, люди (голосовые профили, фаза 3) и история follow-up проектов.
+/// Порядок записей — порядок добавления; интерфейс сортирует сам.
 public struct Library: Hashable, Codable, Sendable {
   /// 2 — фаза 3: `people`, сопоставления спикеров в записях встреч; 3 — фаза 4: память проекта в SQLite.
   /// Файлы версий 1 и 2 читаются (недостающие поля — пустые).
@@ -256,28 +256,19 @@ public struct Library: Hashable, Codable, Sendable {
   public var projects: [ProjectRecord]
   public var meetings: [MeetingRecord]
   public var people: [PersonRecord]
-  /// Память проекта (SPEC.md §3.6): решения, задачи и вопросы переживают удаление встречи-источника.
-  public var decisions: [DecisionRecord]
-  public var actionItems: [ActionItemRecord]
-  public var questions: [QuestionRecord]
+  /// Сохранённые follow-up встреч (SPEC.md §3.6).
   public var followups: [FollowupRecord]
 
   public init(
     projects: [ProjectRecord] = [],
     meetings: [MeetingRecord] = [],
     people: [PersonRecord] = [],
-    decisions: [DecisionRecord] = [],
-    actionItems: [ActionItemRecord] = [],
-    questions: [QuestionRecord] = [],
     followups: [FollowupRecord] = []
   ) {
     self.schemaVersion = Self.currentSchemaVersion
     self.projects = projects
     self.meetings = meetings
     self.people = people
-    self.decisions = decisions
-    self.actionItems = actionItems
-    self.questions = questions
     self.followups = followups
   }
 
@@ -289,9 +280,6 @@ public struct Library: Hashable, Codable, Sendable {
     projects = try container.decodeIfPresent([ProjectRecord].self, forKey: .projects) ?? []
     meetings = try container.decodeIfPresent([MeetingRecord].self, forKey: .meetings) ?? []
     people = try container.decodeIfPresent([PersonRecord].self, forKey: .people) ?? []
-    decisions = try container.decodeIfPresent([DecisionRecord].self, forKey: .decisions) ?? []
-    actionItems = try container.decodeIfPresent([ActionItemRecord].self, forKey: .actionItems) ?? []
-    questions = try container.decodeIfPresent([QuestionRecord].self, forKey: .questions) ?? []
     followups = try container.decodeIfPresent([FollowupRecord].self, forKey: .followups) ?? []
   }
 
@@ -397,14 +385,14 @@ public struct Library: Hashable, Codable, Sendable {
     }
   }
 
-  /// Удаляет проект; его встречи остаются в библиотеке без проекта, а память проекта (решения, задачи,
-  /// вопросы, импорты) уходит вместе с ним — она осмысленна только внутри проекта.
+  /// Удаляет проект; его встречи остаются в библиотеке без проекта, а история follow-up уходит вместе
+  /// с ним — она осмысленна только внутри проекта.
   public mutating func removeProject(id: UUID) {
     projects.removeAll { $0.id == id }
     for index in meetings.indices where meetings[index].projectID == id {
       meetings[index].projectID = nil
     }
-    removeMemory(projectID: id)
+    removeFollowups(projectID: id)
   }
 
   /// Активные статусы после перезапуска приложения означают прерванную обработку: обработчика уже нет,

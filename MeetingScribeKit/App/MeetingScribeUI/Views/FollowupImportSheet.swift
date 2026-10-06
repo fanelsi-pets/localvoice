@@ -4,57 +4,40 @@ import Export
 import Store
 import SwiftUI
 
-/// «Follow-up из ответа модели» (DESIGN.md §5, SPEC.md §3.6): вставленный или сгенерированный локально
-/// ответ модели сохраняется в историю проекта целиком, парсер разбирает решения, задачи и вопросы,
-/// пользователь отмечает и правит пункты, и они уходят в память проекта.
+/// «Follow-up» встречи (DESIGN.md §5, SPEC.md §3.6): модель пишет follow-up по транскрипту (или
+/// пользователь вставляет ответ внешней модели), документ можно прочитать, поправить, перевести на
+/// другой язык, скопировать или сохранить .md — и сохранить в историю проекта целиком.
 struct FollowupImportSheet: View {
   @Bindable var model: AppModel
   let meetingID: UUID
 
   @State private var text = ""
-  /// Служебный блок ```meeting-followup сгенерированного ответа: читателю не показывается, парсер
-  /// получает его вместе с документом из редактора.
-  @State private var machineBlock: String?
-  @State private var parsed = ParsedFollowup()
-  @State private var decisions: [DraftItem] = []
-  @State private var actions: [DraftItem] = []
-  @State private var questions: [DraftItem] = []
+  @State private var mode: Mode = .preview
   @State private var source: FollowupSource = .pasted
   @State private var projectChoice: ProjectChoice = .none
   @State private var newProjectName = ""
   @State private var isExporting = false
+  /// Текст и язык до перевода: отмена или ошибка перевода возвращают документ как был.
+  @State private var beforeTranslation: (text: String, language: FollowupLanguage)?
 
-  /// Один пункт предпросмотра: включён ли он и что именно запишется.
-  private struct DraftItem: Identifiable, Hashable {
-    var id: Int
-    var isOn = true
-    var text: String
-    var owner = ""
-    var due = ""
+  /// Как показан документ: прочитать или править Markdown.
+  private enum Mode: Hashable {
+    case preview
+    case markdown
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Follow-up из ответа модели").font(.title3)
-      Text(subtitle)
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      Text(
-        "Вставьте ответ Claude на TranscribeFull целиком: текст сохранится в истории проекта, а решения, задачи и вопросы будут распознаны и добавлены в его память."
-      )
-      .font(.callout)
-      .foregroundStyle(.secondary)
-      .fixedSize(horizontal: false, vertical: true)
-      Form {
-        if record?.projectID == nil { projectSection }
-        answerSection
-        previewSections
-      }
-      .formStyle(.grouped)
+      header
+      if record?.projectID == nil { projectPicker }
+      toolbar
+      document
+      statusLine
+      Divider()
       footer
     }
-    .padding()
-    .frame(minWidth: 560, minHeight: 520)
+    .padding(20)
+    .frame(minWidth: 640, idealWidth: 760, maxWidth: .infinity, minHeight: 560, idealHeight: 720)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("followup.sheet")
     .fileExporter(
@@ -66,49 +49,250 @@ struct FollowupImportSheet: View {
     .onAppear {
       if model.followupStartsGeneration {
         model.followupStartsGeneration = false
-        model.startFollowupGeneration(meetingID: meetingID)
+        startGeneration()
       }
     }
-    // Во время генерации показываем растущий ответ, но не разбираем его на каждой дельте:
-    // разбор чинит JSON и пробует markdown — на незакрытом блоке это лишняя работа главного актора.
+    // Растущий ответ модели сразу в документе; Gemini присылает его одним куском.
     .onChange(of: model.followupGeneration.text) { _, generated in
       guard !generated.isEmpty else { return }
-      source = generatedSource
-      showGenerated(generated)
+      text = FollowupGenerationPrompt.cleanedAnswer(generated)
     }
     .onChange(of: model.followupGeneration.finishedText) { _, finished in
       guard let finished, !finished.isEmpty else { return }
-      source = generatedSource
-      showGenerated(finished)
-      reparse()
+      text = FollowupGenerationPrompt.cleanedAnswer(finished)
+      beforeTranslation = nil
+    }
+    .onChange(of: model.followupGeneration.errorText) { _, error in
+      if error != nil { restoreAfterFailedTranslation() }
     }
   }
 
-  /// Ответ модели на экране — документ без служебного блока; сам блок хранится отдельно для разбора,
-  /// поэтому копирование, сохранение .md и история получают чистый документ.
-  private func showGenerated(_ response: String) {
-    let (document, block) = FollowupParser.split(response)
-    text = document
-    machineBlock = block
+  // MARK: - Шапка
+
+  private var header: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Follow-up").font(.title2.weight(.semibold))
+      Text(subtitle)
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .truncationMode(.middle)
+    }
   }
 
-  /// Чей ответ: провайдера хоста или локальной модели (для истории follow-up).
-  private var generatedSource: FollowupSource {
-    model.followupGenerator != nil ? .hostModel : .localLLM
+  private var projectPicker: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        Picker("Проект", selection: $projectChoice) {
+          Text("Не выбран").tag(ProjectChoice.none)
+          ForEach(sortedProjects) { project in
+            Text(project.name).tag(ProjectChoice.existing(project.id))
+          }
+          Text("Новый проект").tag(ProjectChoice.new)
+        }
+        .frame(maxWidth: 320)
+        .accessibilityIdentifier("followup.project")
+        if projectChoice == .new {
+          TextField("Название проекта", text: $newProjectName)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 260)
+            .accessibilityIdentifier("followup.newProjectName")
+        }
+      }
+      Text("Follow-up хранятся в истории проекта: встреча переедет в выбранный проект.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
   }
 
-  private var followupLanguage: Binding<FollowupLanguage> {
+  // MARK: - Панель
+
+  /// Генерация и язык слева, вид документа справа. Подписи короткие, а модель вынесена в подсказку:
+  /// длинное «Сгенерировать (Gemini · …)» раздвигало окно шире листа.
+  private var toolbar: some View {
+    HStack(spacing: 10) {
+      if let generator = model.activeFollowupGenerator {
+        if model.followupGeneration.isRunning {
+          Button("Остановить", role: .cancel) { cancelGeneration() }
+            .accessibilityIdentifier("followup.cancelGeneration")
+        } else {
+          Button(
+            hasText ? String(localized: "Создать заново") : String(localized: "Создать follow-up"),
+            systemImage: "sparkles"
+          ) {
+            startGeneration()
+          }
+          .disabled(!generator.isAvailable)
+          .help(generator.unavailableReason ?? String(localized: "Модель: \(generator.title)"))
+          .accessibilityIdentifier("followup.generate")
+        }
+        Picker("Язык", selection: languageBinding) {
+          ForEach(FollowupLanguage.allCases, id: \.self) { language in
+            Text(language.title).tag(language)
+          }
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
+        .disabled(model.followupGeneration.isRunning || !generator.isAvailable)
+        .help(
+          hasText
+            ? String(localized: "Смена языка переводит этот follow-up")
+            : String(localized: "На каком языке писать follow-up"))
+        .accessibilityIdentifier("followup.language")
+      }
+      Spacer(minLength: 12)
+      Picker("Вид", selection: $mode) {
+        Text("Документ").tag(Mode.preview)
+        Text("Markdown").tag(Mode.markdown)
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+      .fixedSize()
+      .accessibilityIdentifier("followup.mode")
+    }
+    .labelStyle(.titleAndIcon)
+  }
+
+  // MARK: - Документ
+
+  @ViewBuilder private var document: some View {
+    Group {
+      if mode == .markdown {
+        TextEditor(text: $text)
+          .font(.body.monospaced())
+          .scrollContentBackground(.hidden)
+          .padding(8)
+          .disabled(model.followupGeneration.isRunning)
+          .accessibilityLabel("Текст follow-up в Markdown")
+          .accessibilityIdentifier("followup.text")
+      } else if hasText {
+        ScrollView {
+          MarkdownDocumentView(markdown: text)
+            .padding(16)
+        }
+        .accessibilityIdentifier("followup.preview")
+      } else {
+        emptyDocument
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .textBackgroundColor))
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
+  }
+
+  @ViewBuilder private var emptyDocument: some View {
+    if model.followupGeneration.isRunning {
+      // Пока модель пишет, подсказки «создайте или вставьте» сбивают с толку.
+      ContentUnavailableView(
+        "Модель пишет follow-up…", systemImage: "text.badge.checkmark",
+        description: Text("Обычно это занимает до минуты."))
+    } else {
+      idleDocument
+    }
+  }
+
+  private var idleDocument: some View {
+    ContentUnavailableView {
+      Label("Follow-up пока нет", systemImage: "text.badge.checkmark")
+    } description: {
+      Text(
+        model.activeFollowupGenerator == nil
+          ? "Вставьте ответ модели на TranscribeFull — он сохранится в истории проекта."
+          : "Создайте follow-up моделью или вставьте ответ внешней модели на TranscribeFull."
+      )
+    } actions: {
+      PasteButton(payloadType: String.self) { strings in paste(strings) }
+        .accessibilityIdentifier("followup.paste")
+    }
+  }
+
+  /// Живость генерации и перевода, ошибки — одной строкой под документом.
+  @ViewBuilder private var statusLine: some View {
+    if model.followupGeneration.isRunning {
+      Text(model.followupGeneration.statusText)
+        .font(.caption)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .accessibilityIdentifier("followup.generationStatus")
+    } else if let error = model.followupGeneration.errorText {
+      Text(error)
+        .font(.caption)
+        .foregroundStyle(.red)
+        .lineLimit(3)
+        .accessibilityIdentifier("followup.generationError")
+    }
+  }
+
+  // MARK: - Футер
+
+  private var footer: some View {
+    HStack(spacing: 8) {
+      if hasText {
+        PasteButton(payloadType: String.self) { strings in paste(strings) }
+          .labelStyle(.iconOnly)
+          .help("Заменить текст ответом модели из буфера обмена")
+          .accessibilityIdentifier("followup.paste")
+        Button("Скопировать", systemImage: "doc.on.doc") { copyText() }
+          .accessibilityIdentifier("followup.copy")
+        Button("Сохранить .md…", systemImage: "square.and.arrow.down") { isExporting = true }
+          .accessibilityIdentifier("followup.save")
+      }
+      Spacer(minLength: 12)
+      Button("Отмена", role: .cancel) { close() }
+        .keyboardShortcut(.cancelAction)
+        .accessibilityIdentifier("followup.cancel")
+      Button("Сохранить в проект") { save() }
+        .keyboardShortcut(.defaultAction)
+        .disabled(!hasText || !hasProject || model.followupGeneration.isRunning)
+        .accessibilityIdentifier("followup.add")
+    }
+    .labelStyle(.titleAndIcon)
+  }
+
+  // MARK: - Действия
+
+  private func startGeneration() {
+    beforeTranslation = nil
+    source = generatedSource
+    model.startFollowupGeneration(meetingID: meetingID)
+  }
+
+  private func cancelGeneration() {
+    model.followupGeneration.cancel()
+    // Отменённый перевод не должен оставить документ наполовину на другом языке.
+    restoreAfterFailedTranslation()
+  }
+
+  /// Смена языка: без текста — язык следующей генерации, с текстом — перевод этого follow-up.
+  private var languageBinding: Binding<FollowupLanguage> {
     Binding(
       get: { model.settings.followupLanguage },
-      set: { model.settings.followupLanguage = $0 })
+      set: { language in
+        let previous = model.settings.followupLanguage
+        guard language != previous else { return }
+        model.settings.followupLanguage = language
+        guard hasText, !model.followupGeneration.isRunning else { return }
+        beforeTranslation = (text, previous)
+        if !model.startFollowupTranslation(text, to: language) {
+          restoreAfterFailedTranslation()
+        }
+      })
   }
 
-  /// `[YYYY-MM-DD]_[Проект]_follow-up_имена_и_поручения.md` — формат из инструкции генерации.
-  private var exportFileName: String {
-    FollowupGenerationPrompt.fileName(
-      date: record?.date ?? record?.createdAt,
-      project: record.flatMap { model.projectName(for: $0) },
-      language: model.settings.followupLanguage)
+  private func restoreAfterFailedTranslation() {
+    guard let saved = beforeTranslation else { return }
+    beforeTranslation = nil
+    text = saved.text
+    model.settings.followupLanguage = saved.language
+  }
+
+  private func paste(_ strings: [String]) {
+    guard let pasted = strings.first(where: { !$0.isEmpty }) else { return }
+    source = .pasted
+    beforeTranslation = nil
+    text = FollowupGenerationPrompt.cleanedAnswer(pasted)
+    mode = .preview
   }
 
   private func copyText() {
@@ -117,253 +301,9 @@ struct FollowupImportSheet: View {
     pasteboard.setString(text, forType: .string)
   }
 
-  // MARK: - Проект
-
-  @ViewBuilder private var projectSection: some View {
-    Section("Проект") {
-      Picker("Проект", selection: $projectChoice) {
-        Text("Не выбран").tag(ProjectChoice.none)
-        ForEach(sortedProjects) { project in
-          Text(project.name).tag(ProjectChoice.existing(project.id))
-        }
-        Text("Новый проект").tag(ProjectChoice.new)
-      }
-      .accessibilityIdentifier("followup.project")
-      if projectChoice == .new {
-        TextField("Название проекта", text: $newProjectName)
-          .accessibilityIdentifier("followup.newProjectName")
-      }
-      Text("Решения и задачи хранятся в проекте: встреча переедет в выбранный проект.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-    }
-  }
-
-  // MARK: - Ответ модели
-
-  @ViewBuilder private var answerSection: some View {
-    Section("Ответ модели") {
-      TextEditor(text: $text)
-        .font(.body.monospaced())
-        // Длинный ответ прокручивается внутри поля: предпросмотр и футер остаются под рукой.
-        .frame(minHeight: 120, maxHeight: 360)
-        .onChange(of: text) { _, _ in
-          // Ручной ввод и вставка; ответ модели разбирается по окончании генерации.
-          guard !model.followupGeneration.isRunning else { return }
-          reparse()
-        }
-        .accessibilityLabel("Ответ модели на TranscribeFull")
-        .accessibilityIdentifier("followup.text")
-      HStack {
-        // Стандартная кнопка вставки: системного запроса «Разрешить вставку» она не вызывает
-        // и сама выключается, когда в буфере нет текста.
-        PasteButton(payloadType: String.self) { strings in
-          guard let pasted = strings.first(where: { !$0.isEmpty }) else { return }
-          source = .pasted
-          machineBlock = nil
-          text = pasted
-        }
-        .accessibilityIdentifier("followup.paste")
-        .accessibilityLabel("Вставить ответ модели из буфера обмена")
-        Button("Очистить") {
-          text = ""
-          machineBlock = nil
-          reparse()
-        }
-        .disabled(text.isEmpty)
-        if let generator = model.activeFollowupGenerator {
-          if model.followupGeneration.isRunning {
-            Button("Отменить", role: .cancel) {
-              model.followupGeneration.cancel()
-              // Отмена — не окончание: разбираем то, что модель успела прислать.
-              reparse()
-            }
-            .accessibilityIdentifier("followup.cancelGeneration")
-          } else {
-            Picker("Язык follow-up", selection: followupLanguage) {
-              ForEach(FollowupLanguage.allCases, id: \.self) { language in
-                Text(language.title).tag(language)
-              }
-            }
-            .pickerStyle(.menu)
-            .fixedSize()
-            .accessibilityIdentifier("followup.language")
-            Button("Сгенерировать (\(generator.title))") {
-              model.startFollowupGeneration(meetingID: meetingID)
-            }
-            .disabled(!generator.isAvailable)
-            .help(
-              generator.unavailableReason
-                ?? String(localized: "Отправить транскрипт модели и разобрать её ответ")
-            )
-            .accessibilityIdentifier("followup.generate")
-          }
-        }
-      }
-      if !text.isEmpty, !model.followupGeneration.isRunning {
-        HStack {
-          Button("Скопировать follow-up") { copyText() }
-            .accessibilityIdentifier("followup.copy")
-          Button("Сохранить .md…") { isExporting = true }
-            .accessibilityIdentifier("followup.save")
-        }
-      }
-      if model.followupGeneration.isRunning {
-        // Признаки живости вместо неопределённой полосы (SPEC.md §3.7 п. 4): текст растёт на глазах.
-        Text(model.followupGeneration.statusText)
-          .font(.caption)
-          .monospacedDigit()
-          .foregroundStyle(.secondary)
-          .accessibilityIdentifier("followup.generationStatus")
-      }
-      if let error = model.followupGeneration.errorText {
-        Text(error)
-          .font(.caption)
-          .foregroundStyle(.red)
-          .accessibilityIdentifier("followup.generationError")
-      }
-      Text("Кнопка «Вставить» берёт текст из буфера; можно и просто нажать ⌘V в поле выше.")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      Label(methodTitle, systemImage: methodImage)
-        .font(.callout)
-        .foregroundStyle(parsed.isEmpty ? Color.secondary : Color.primary)
-        .accessibilityIdentifier("followup.method")
-      ForEach(parsed.warnings, id: \.self) { warning in
-        Text(warning)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-    }
-  }
-
-  // MARK: - Предпросмотр
-
-  @ViewBuilder private var previewSections: some View {
-    if !decisions.isEmpty {
-      Section("Решения (\(decisions.filter(\.isOn).count) из \(decisions.count))") {
-        ForEach($decisions) { $item in
-          VStack(alignment: .leading, spacing: 2) {
-            HStack {
-              include($item, label: String(localized: "Добавить решение"))
-              TextField("Решение", text: $item.text)
-                .accessibilityIdentifier("followup.decision.\(item.id)")
-            }
-            if let timestamp = parsed.decisions[safe: item.id]?.timestamp {
-              Text("Таймкод \(Timecode.hhmmss(timestamp))")
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-            }
-          }
-        }
-      }
-    }
-    if !actions.isEmpty {
-      Section("Задачи (\(actions.filter(\.isOn).count) из \(actions.count))") {
-        ForEach($actions) { $item in
-          VStack(alignment: .leading, spacing: 4) {
-            HStack {
-              include($item, label: String(localized: "Добавить задачу"))
-              TextField("Задача", text: $item.text)
-                .accessibilityIdentifier("followup.action.\(item.id)")
-            }
-            HStack {
-              TextField("Ответственный", text: $item.owner)
-                .accessibilityIdentifier("followup.action.owner.\(item.id)")
-              ownerMenu(for: $item)
-              TextField("Срок (ГГГГ-ММ-ДД)", text: $item.due)
-                .accessibilityIdentifier("followup.action.due.\(item.id)")
-            }
-            .font(.callout)
-          }
-        }
-      }
-    }
-    if !questions.isEmpty {
-      Section("Вопросы (\(questions.filter(\.isOn).count) из \(questions.count))") {
-        ForEach($questions) { $item in
-          HStack {
-            include($item, label: String(localized: "Добавить вопрос"))
-            TextField("Вопрос", text: $item.text)
-              .accessibilityIdentifier("followup.question.\(item.id)")
-          }
-        }
-      }
-    }
-    if let summary = parsed.summary, !summary.isEmpty {
-      Section("Резюме") {
-        Text(summary)
-          .font(.callout)
-          .textSelection(.enabled)
-          .accessibilityIdentifier("followup.summary")
-      }
-    }
-  }
-
-  /// Флажок «взять пункт»: отдельный контрол рядом с полем — иначе клик по тексту переключал бы галочку.
-  private func include(_ item: Binding<DraftItem>, label: String) -> some View {
-    Toggle(label, isOn: item.isOn)
-      .toggleStyle(.checkbox)
-      .labelsHidden()
-      .accessibilityLabel("\(label): \(item.wrappedValue.text)")
-  }
-
-  private func ownerMenu(for item: Binding<DraftItem>) -> some View {
-    Menu {
-      ForEach(ownerSuggestions, id: \.self) { name in
-        Button(name) { item.wrappedValue.owner = name }
-      }
-    } label: {
-      Label("Подсказки", systemImage: "person.crop.circle")
-    }
-    .labelStyle(.iconOnly)
-    .menuStyle(.borderlessButton)
-    .fixedSize()
-    .disabled(ownerSuggestions.isEmpty)
-    .help("Люди библиотеки и спикеры этой встречи")
-  }
-
-  // MARK: - Футер
-
-  private var footer: some View {
-    HStack {
-      LocalProcessingBadge()
-      Spacer()
-      Button("Отмена", role: .cancel) { close() }
-        .keyboardShortcut(.cancelAction)
-        .accessibilityIdentifier("followup.cancel")
-      Button("Сохранить в проект") { add() }
-        .keyboardShortcut(.defaultAction)
-        .disabled(!hasText || !hasProject)
-        .accessibilityIdentifier("followup.add")
-    }
-  }
-
-  // MARK: - Действия
-
-  private func reparse() {
-    // Скрытый блок разбирается вместе с документом: правки текста в редакторе не теряют структуру.
-    let input = machineBlock.map { text + "\n\n" + $0 } ?? text
-    let result = FollowupParser.parse(input)
-    parsed = result
-    decisions = result.decisions.enumerated().map {
-      DraftItem(id: $0.offset, text: $0.element.text)
-    }
-    actions = result.actions.enumerated().map {
-      DraftItem(
-        id: $0.offset, text: $0.element.text, owner: $0.element.owner ?? "",
-        due: $0.element.due ?? $0.element.dueText ?? "")
-    }
-    questions = result.questions.enumerated().map {
-      DraftItem(id: $0.offset, text: $0.element.text)
-    }
-  }
-
-  private func add() {
+  private func save() {
     guard resolveProject() else { return }
-    model.finishFollowupImport(
-      parsed, meetingID: meetingID, source: source, rawText: text, include: selection)
+    model.finishFollowup(text, meetingID: meetingID, source: source)
     model.followupGeneration.reset()
   }
 
@@ -400,11 +340,23 @@ struct FollowupImportSheet: View {
     return parts.joined(separator: " · ")
   }
 
+  /// Чей ответ: провайдера хоста или локальной модели (для истории follow-up).
+  private var generatedSource: FollowupSource {
+    model.followupGenerator != nil ? .hostModel : .localLLM
+  }
+
+  /// `[YYYY-MM-DD]_[Проект]_follow-up_имена_и_поручения.md`.
+  private var exportFileName: String {
+    FollowupGenerationPrompt.fileName(
+      date: record?.date ?? record?.createdAt,
+      project: record.flatMap { model.projectName(for: $0) },
+      language: model.settings.followupLanguage)
+  }
+
   private var sortedProjects: [ProjectRecord] {
     model.library.projects.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
   }
 
-  /// Сохранять есть что, когда вставлен текст: даже без распознанных пунктов он идёт в историю.
   private var hasText: Bool {
     !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
@@ -417,55 +369,10 @@ struct FollowupImportSheet: View {
     case .new: return !newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
   }
-
-  private var ownerSuggestions: [String] {
-    var names = model.library.peopleByName.map(\.name)
-    if let record { names += record.speakerNames.values }
-    var seen: Set<String> = []
-    return
-      names
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
-      .sorted { $0.localizedCompare($1) == .orderedAscending }
-  }
-
-  private var selection: FollowupSelection {
-    FollowupSelection(
-      decisions: decisions.filter(\.isOn).compactMap { item in
-        AppModel.cleaned(item.text).map { FollowupSelection.Item(index: item.id, text: $0) }
-      },
-      actions: actions.filter(\.isOn).compactMap { item in
-        AppModel.cleaned(item.text).map {
-          FollowupSelection.Item(
-            index: item.id, text: $0, owner: AppModel.cleaned(item.owner),
-            due: AppModel.cleaned(item.due))
-        }
-      },
-      questions: questions.filter(\.isOn).compactMap { item in
-        AppModel.cleaned(item.text).map { FollowupSelection.Item(index: item.id, text: $0) }
-      })
-  }
-
-  private var methodTitle: String {
-    switch parsed.method {
-    case .jsonBlock: String(localized: "Найден блок meeting-followup")
-    case .markdownSections: String(localized: "Разобраны секции Markdown")
-    case .none:
-      String(localized: "Решения, задачи и вопросы не распознаны — сохранится только текст")
-    }
-  }
-
-  private var methodImage: String {
-    switch parsed.method {
-    case .jsonBlock: "curlybraces"
-    case .markdownSections: "text.badge.checkmark"
-    case .none: "questionmark.circle"
-    }
-  }
 }
 
 extension Array {
-  /// Элемент по индексу или `nil` — предпросмотр смотрит в разбор по номеру пункта.
+  /// Элемент по индексу или `nil`.
   subscript(safe index: Int) -> Element? {
     indices.contains(index) ? self[index] : nil
   }

@@ -3,8 +3,8 @@ import LLMkit
 import MeetingScribeUI
 
 /// Follow-up for a processed meeting through Gemini with the user's own API key (free tier) — the same
-/// `AIService` and key that power text improvement. The core builds the prompt (structure, rules, the
-/// `meeting-followup` block) and parses the answer; this class only makes the request.
+/// `AIService` and key that power text improvement. The core builds the prompts (generation and
+/// translation); this class only makes the request.
 @MainActor
 final class GeminiFollowupGenerator: FollowupGenerating {
     private let aiService: AIService
